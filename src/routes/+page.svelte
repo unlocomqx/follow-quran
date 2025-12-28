@@ -2,50 +2,74 @@
 	import Icon from '@iconify/svelte';
 	import { MAX_SAMPLES, transcriber } from '$lib/stores/transcriber.svelte';
 
+	const WHISPER_SAMPLING_RATE = 16_000;
+
 	let listening = $state<boolean>(false);
-	let buffer: Float32Array = [];
+	let stream = $state<MediaStream | null>(null);
+	let recorder: MediaRecorder | null = null;
 	let audioContext: AudioContext | null = null;
-	let stream: MediaStream | null = null;
+	let chunks: Blob[] = [];
+
+	async function processChunks() {
+		if (!recorder || !listening || !transcriber.is_ready()) return;
+
+		if (chunks.length > 0) {
+			const blob = new Blob(chunks, { type: recorder.mimeType });
+			const arrayBuffer = await blob.arrayBuffer();
+			const decoded = await audioContext!.decodeAudioData(arrayBuffer);
+			let audio = decoded.getChannelData(0);
+
+			console.log(audio.length);
+
+			if (audio.length > MAX_SAMPLES) {
+				audio = audio.slice(-MAX_SAMPLES);
+			}
+
+			transcriber.start(audio);
+		} else {
+			recorder?.requestData();
+		}
+	}
 
 	async function startListening() {
 		if (listening) return;
-		listening = true;
+
 		stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-		audioContext = new AudioContext();
-		const source = audioContext.createMediaStreamSource(stream);
+		recorder = new MediaRecorder(stream);
+		audioContext = new AudioContext({ sampleRate: WHISPER_SAMPLING_RATE });
 
-		await audioContext.audioWorklet.addModule(
-			new URL('$lib/audio-processor.ts', import.meta.url)
-		);
-
-		const worklet = new AudioWorkletNode(audioContext, 'audio-processor');
-		worklet.port.onmessage = (event) => {
-			if (!listening) {
-				return;
-			}
+		recorder.onstart = () => {
+			console.log('recorder started');
 			listening = true;
-			if (!transcriber.is_ready()) {
-				return;
-			}
+			chunks = [];
+		};
 
-			buffer = new Float32Array([...buffer, ...event.data]);
-			console.log(buffer.length);
-			if (buffer.length >= MAX_SAMPLES) {
-				transcriber.start(buffer);
-				buffer = new Float32Array();
+		recorder.ondataavailable = (e) => {
+			console.log('data available', e.data.size);
+			if (e.data.size > 0) {
+				chunks.push(e.data);
+				processChunks();
+			} else {
+				setTimeout(() => recorder?.requestData(), 25);
 			}
 		};
-		source.connect(worklet);
+
+		recorder.onstop = () => {
+			console.log('recorder stopped');
+			listening = false;
+		};
+
+		recorder.start();
 	}
 
 	async function stopListening() {
-		listening = false;
-		buffer = new Float32Array();
-		if (!audioContext || !stream) return;
-		await audioContext.close();
-		stream.getTracks().forEach((track) => track.stop());
+		recorder?.stop();
+		stream?.getTracks().forEach((track) => track.stop());
+		audioContext?.close();
+		recorder = null;
 		audioContext = null;
 		stream = null;
+		chunks = [];
 	}
 </script>
 

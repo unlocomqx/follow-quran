@@ -95,10 +95,6 @@ export class Transcriber {
 		});
 	}
 
-	clearOutput() {
-		this.output = undefined;
-	}
-
 	is_ready() {
 		return this.state === 'idle';
 	}
