@@ -52,11 +52,11 @@
 		</div>
 		<div class="flex flex-col gap-4 mt-10">
 			{#each transcriber.progressItems as item (item.file)}
-				<div class="flex flex-col items-center">
+				<div class="flex flex-col">
 					<div class="font-mono">
 						{item.file} ({item.progress?.toFixed(2) ?? 0}%) - {item.status}
 					</div>
-					<progress class="progress progress-accent w-56" value={item.progress} max="100"></progress>
+					<progress class="progress progress-accent" value={item.progress} max="100"></progress>
 				</div>
 			{/each}
 		</div>
