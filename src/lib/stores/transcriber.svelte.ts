@@ -1,7 +1,7 @@
 import { createWorker } from './worker';
 import Constants from '../utils/constants';
 
-const WHISPER_SAMPLING_RATE = 16_000;
+export const WHISPER_SAMPLING_RATE = 16_000;
 const MAX_AUDIO_LENGTH = 30; // seconds
 export const MAX_SAMPLES = WHISPER_SAMPLING_RATE * MAX_AUDIO_LENGTH;
 
@@ -19,13 +19,17 @@ interface TranscriberUpdateData {
 	tps?: number;
 }
 
+interface OutputData {
+	text: string;
+	tps?: number;
+}
+
 export class Transcriber {
-	state = $state<'idle' | 'busy' | 'loading'>('idle');
+	state = $state<'idle' | 'busy' | 'loading' | 'ready'>('idle');
 	progressItems = $state<ProgressItem[]>([]);
-	output = $state<TranscriberUpdateData | undefined>(undefined);
+	output = $state<OutputData | undefined>(undefined);
 	model = $state(Constants.DEFAULT_MODEL);
 	multilingual = $state(Constants.DEFAULT_MULTILINGUAL);
-	subtask = $state(Constants.DEFAULT_SUBTASK);
 	language = $state<string | undefined>(Constants.DEFAULT_LANGUAGE);
 
 	private worker: Worker;
@@ -40,9 +44,10 @@ export class Transcriber {
 
 	private onMessage(event: MessageEvent) {
 		const message = event.data;
-		console.log(message.status);
+
 		switch (message.status) {
 			case 'progress':
+				this.state = 'loading';
 				this.progressItems.map((item) => {
 					if (item.file === message.file) {
 						item.progress = message.progress;
@@ -50,11 +55,9 @@ export class Transcriber {
 				});
 				break;
 
-			case 'update':
+			// case 'update':
 			case 'complete': {
-				const busy = message.status === 'update';
-				this.output = message;
-				this.state = busy ? 'busy' : 'idle';
+				this.output = { text: message.output.join(' '), tps: message.tps };
 				break;
 			}
 
@@ -66,7 +69,7 @@ export class Transcriber {
 				break;
 
 			case 'ready':
-				this.state = 'idle';
+				this.state = 'ready';
 				break;
 
 			case 'error':
@@ -83,20 +86,13 @@ export class Transcriber {
 	start(audio: Float32Array) {
 		if (!audio) return;
 
-		this.output = undefined;
-		this.state = 'busy';
-
 		this.worker.postMessage({
 			type: 'generate',
 			data: {
 				audio,
-				language: this.multilingual && this.language !== 'auto' ? this.language : null
+				language: 'ar'
 			}
 		});
-	}
-
-	is_ready() {
-		return this.state === 'idle';
 	}
 }
 

@@ -1,8 +1,7 @@
 <script lang="ts">
 	import Icon from '@iconify/svelte';
-	import { MAX_SAMPLES, transcriber } from '$lib/stores/transcriber.svelte';
-
-	const WHISPER_SAMPLING_RATE = 16_000;
+	import { MAX_SAMPLES, transcriber, WHISPER_SAMPLING_RATE } from '$lib/stores/transcriber.svelte';
+	import { onMount } from 'svelte';
 
 	let listening = $state<boolean>(false);
 	let stream = $state<MediaStream | null>(null);
@@ -11,21 +10,22 @@
 	let chunks: Blob[] = [];
 
 	async function processChunks() {
-		if (!recorder || !listening || !transcriber.is_ready()) return;
-
+		if (!recorder || !listening || transcriber.state !== 'ready') {
+			console.log('early return', transcriber.state);
+			return
+		}
 		if (chunks.length > 0) {
 			const blob = new Blob(chunks, { type: recorder.mimeType });
 			const arrayBuffer = await blob.arrayBuffer();
 			const decoded = await audioContext!.decodeAudioData(arrayBuffer);
 			let audio = decoded.getChannelData(0);
 
-			console.log(audio.length);
-
 			if (audio.length > MAX_SAMPLES) {
 				audio = audio.slice(-MAX_SAMPLES);
 			}
 
 			transcriber.start(audio);
+			recorder?.requestData();
 		} else {
 			recorder?.requestData();
 		}
@@ -39,13 +39,12 @@
 		audioContext = new AudioContext({ sampleRate: WHISPER_SAMPLING_RATE });
 
 		recorder.onstart = () => {
-			console.log('recorder started');
 			listening = true;
 			chunks = [];
+			recorder?.requestData();
 		};
 
 		recorder.ondataavailable = (e) => {
-			console.log('data available', e.data.size);
 			if (e.data.size > 0) {
 				chunks.push(e.data);
 				processChunks();
@@ -55,7 +54,6 @@
 		};
 
 		recorder.onstop = () => {
-			console.log('recorder stopped');
 			listening = false;
 		};
 
@@ -71,6 +69,10 @@
 		stream = null;
 		chunks = [];
 	}
+
+	onMount(() => {
+		transcriber.load();
+	});
 </script>
 
 <div class="card bg-base-100 w-xl m-auto my-10 shadow-sm">
@@ -104,6 +106,6 @@
 			{/each}
 		</div>
 
-		== {transcriber.output?.output} ==
+		== {transcriber.output?.text} ==
 	</div>
 </div>

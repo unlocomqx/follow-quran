@@ -32,5 +32,5 @@ export default {
     DEFAULT_SUBTASK: "transcribe",
     DEFAULT_LANGUAGE: "arabic",
     DEFAULT_QUANTIZED: isMobileOrTablet,
-    DEFAULT_MULTILINGUAL: true,
+    DEFAULT_MULTILINGUAL: false,
 };
