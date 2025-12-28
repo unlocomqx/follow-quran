@@ -38,18 +38,17 @@ export class Transcriber {
 
 	constructor() {
 		this.worker = createWorker(this.onMessage.bind(this));
-		$effect.root(() => {
-			console.log('effect', this.progressItems.length);
-		});
 	}
 
 	private onMessage(event: MessageEvent) {
 		const message = event.data;
 		switch (message.status) {
 			case 'progress':
-				this.progressItems = this.progressItems.map((item) =>
-					item.file === message.file ? { ...item, progress: message.progress } : item
-				);
+				this.progressItems.map((item) =>{
+					if (item.file === message.file) {
+						item.progress = message.progress;
+					}
+				});
 				break;
 
 			case 'update':
@@ -68,7 +67,9 @@ export class Transcriber {
 
 			case 'initiate':
 				this.state = 'loading';
-				this.progressItems.push(message)
+				if(!this.progressItems.some((item) => item.file === message.file)) {
+					this.progressItems.push(message);
+				}
 				break;
 
 			case 'ready':
