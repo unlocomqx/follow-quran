@@ -80,7 +80,7 @@ const transcribe = async ({ audio, model, subtask, language }: TranscribeMessage
 	let start_time: number | null = null;
 	let num_tokens = 0;
 	let tps: number | undefined;
-return 1;
+
 	// @ts-expect-error tokenizer type mismatch
 	const streamer = new WhisperTextStreamer(transcriber.tokenizer, {
 		time_precision,

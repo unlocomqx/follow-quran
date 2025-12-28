@@ -26,6 +26,7 @@
 			if (!transcriber.is_ready()) {
 				return;
 			}
+			console.log(event.data.length);
 			transcriber.start(event.data);
 		};
 		source.connect(worklet);
@@ -65,5 +66,9 @@
 				</div>
 			{/each}
 		</div>
+
+		{#each transcriber.output?.chunks??[] as chunk}
+			{chunk.text}
+		{/each}
 	</div>
 </div>
