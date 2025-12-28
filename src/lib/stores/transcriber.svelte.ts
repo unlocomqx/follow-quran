@@ -26,7 +26,7 @@ export interface TranscriberData {
 }
 
 export class Transcriber {
-	state = $state<"idle" | "busy" | "loading">("idle");
+	state = $state<'idle' | 'busy' | 'loading'>('idle');
 	progressItems = $state<ProgressItem[]>([]);
 	output = $state<TranscriberData | undefined>(undefined);
 	model = $state(Constants.DEFAULT_MODEL);
@@ -45,15 +45,15 @@ export class Transcriber {
 		const message = event.data;
 		console.log(message.status);
 		switch (message.status) {
-			case "progress":
+			case 'progress':
 				this.progressItems = this.progressItems.map((item) =>
 					item.file === message.file ? { ...item, progress: message.progress } : item
 				);
 				break;
 
-			case "update":
-			case "complete": {
-				const busy = message.status === "update";
+			case 'update':
+			case 'complete': {
+				const busy = message.status === 'update';
 				const updateMessage = message as TranscriberUpdateData;
 				this.output = {
 					isBusy: busy,
@@ -61,55 +61,42 @@ export class Transcriber {
 					tps: updateMessage.data.tps,
 					chunks: updateMessage.data.chunks
 				};
-				this.state = busy ? "busy" : "idle";
+				this.state = busy ? 'busy' : 'idle';
 				break;
 			}
 
-			case "initiate":
-				this.state = "loading";
+			case 'initiate':
+				this.state = 'loading';
 				this.progressItems = [...this.progressItems, message];
 				break;
 
-			case "ready":
-				this.state = "idle";
+			case 'ready':
+				this.state = 'idle';
 				break;
 
-			case "error":
-				this.state = "idle";
+			case 'error':
+				this.state = 'idle';
 				alert(`Error: "${message.data.message}"`);
 				break;
 
-			case "done":
+			case 'done':
 				this.progressItems = this.progressItems.filter((item) => item.file !== message.file);
 				break;
 		}
 	}
 
-	start(audioData: AudioBuffer | undefined) {
-		if (!audioData) return;
+	start(audio: Float32Array) {
+		if (!audio) return;
 
 		this.output = undefined;
-		this.state = "busy";
-
-		let audio: Float32Array;
-		if (audioData.numberOfChannels === 2) {
-			const SCALING_FACTOR = Math.sqrt(2);
-			const left = audioData.getChannelData(0);
-			const right = audioData.getChannelData(1);
-			audio = new Float32Array(left.length);
-			for (let i = 0; i < audioData.length; ++i) {
-				audio[i] = (SCALING_FACTOR * (left[i] + right[i])) / 2;
-			}
-		} else {
-			audio = audioData.getChannelData(0);
-		}
+		this.state = 'busy';
 
 		this.worker.postMessage({
 			audio,
 			model: this.model,
 			multilingual: this.multilingual,
 			subtask: this.multilingual ? this.subtask : null,
-			language: this.multilingual && this.language !== "auto" ? this.language : null
+			language: this.multilingual && this.language !== 'auto' ? this.language : null
 		});
 	}
 

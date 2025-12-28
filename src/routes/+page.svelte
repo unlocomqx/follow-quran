@@ -2,10 +2,6 @@
 	import Icon from '@iconify/svelte';
 	import { transcriber } from '$lib/stores/transcriber.svelte';
 
-	function load_models(){
-		console.log(transcriber);
-	}
-
 	let audioContext: AudioContext | null = null;
 	let stream: MediaStream | null = null;
 
@@ -20,8 +16,8 @@
 
 		const worklet = new AudioWorkletNode(audioContext, "audio-processor");
 		worklet.port.onmessage = (event) => {
-			console.log('okk');
-			// console.log(event.data);
+			console.log('start');
+			// transcriber.start(event.data);
 		};
 		source.connect(worklet);
 	}
@@ -39,12 +35,6 @@
 	<div class="card-body">
 		<h2 class="card-title">Follow The Quran</h2>
 		<p>A web app to follow the Quran recitations automatically.</p>
-		<div>
-			<button class="btn btn-primary" onclick={load_models}>
-				<Icon icon="mdi:download" />
-				Load AI models
-			</button>
-		</div>
 		<div class="card-actions justify-end">
 			<button class="btn btn-success" onclick={startListening}>
 				<Icon icon="mdi:microphone" />
@@ -54,6 +44,13 @@
 				<Icon icon="mdi:stop" />
 				Stop
 			</button>
+		</div>
+		<div>
+			{#each transcriber.progressItems as item (item.file)}
+				<div>
+					{item.name} ({item.progress}%) - {item.status}
+				</div>
+			{/each}
 		</div>
 	</div>
 </div>
