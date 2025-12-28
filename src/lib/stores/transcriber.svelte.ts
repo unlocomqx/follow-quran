@@ -38,19 +38,18 @@ export class Transcriber {
 
 	constructor() {
 		this.worker = createWorker(this.onMessage.bind(this));
+		$effect.root(() => {
+			console.log('effect', this.progressItems.length);
+		});
 	}
 
 	private onMessage(event: MessageEvent) {
 		const message = event.data;
-		console.log(message.status);
 		switch (message.status) {
 			case 'progress':
-				console.log(message.file);
-				this.progressItems.map((item) => {
-					if (item.file === message.file) {
-						item.progress = message.progress;
-					}
-				});
+				this.progressItems = this.progressItems.map((item) =>
+					item.file === message.file ? { ...item, progress: message.progress } : item
+				);
 				break;
 
 			case 'update':
@@ -69,7 +68,7 @@ export class Transcriber {
 
 			case 'initiate':
 				this.state = 'loading';
-				this.progressItems.push(message);
+				this.progressItems.push(message)
 				break;
 
 			case 'ready':
@@ -108,6 +107,13 @@ export class Transcriber {
 
 	is_ready() {
 		return this.state === 'idle';
+	}
+
+	testAdd() {
+		this.progressItems = [
+			...this.progressItems,
+			{ file: 'test.bin', loaded: 0, progress: 50, total: 100, name: 'test', status: 'loading' }
+		];
 	}
 }
 
