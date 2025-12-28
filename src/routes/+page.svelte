@@ -11,7 +11,6 @@
 
 	async function processChunks() {
 		if (!recorder || !listening || transcriber.state !== 'ready') {
-			console.log('early return', transcriber.state);
 			return
 		}
 		if (chunks.length > 0) {
