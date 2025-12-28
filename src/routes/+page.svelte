@@ -2,10 +2,13 @@
 	import Icon from '@iconify/svelte';
 	import { transcriber } from '$lib/stores/transcriber.svelte';
 
+	let listening = $state<boolean>(false);
 	let audioContext: AudioContext | null = null;
 	let stream: MediaStream | null = null;
 
 	async function startListening() {
+		if (listening) return;
+		listening = true;
 		stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 		audioContext = new AudioContext();
 		const source = audioContext.createMediaStreamSource(stream);
@@ -16,6 +19,10 @@
 
 		const worklet = new AudioWorkletNode(audioContext, 'audio-processor');
 		worklet.port.onmessage = (event) => {
+			if (!listening) {
+				return;
+			}
+			listening = true;
 			if (!transcriber.is_ready()) {
 				return;
 			}
@@ -25,6 +32,7 @@
 	}
 
 	async function stopListening() {
+		listening = false;
 		if (!audioContext || !stream) return;
 		await audioContext.close();
 		stream.getTracks().forEach((track) => track.stop());
@@ -38,16 +46,13 @@
 		<h2 class="card-title">Follow The Quran</h2>
 		<p>A web app to follow the Quran recitations automatically.</p>
 		<div class="card-actions justify-end">
-			<button class="btn btn-success" onclick={startListening}>
+			<button class="btn btn-success" onclick={startListening} disabled={listening}>
 				<Icon icon="mdi:microphone" />
 				Start listening
 			</button>
-			<button class="btn btn-error" onclick={stopListening}>
+			<button class="btn btn-error" onclick={stopListening} disabled={!listening}>
 				<Icon icon="mdi:stop" />
 				Stop
-			</button>
-			<button class="btn" onclick={() => transcriber.testAdd()}>
-				Test Add
 			</button>
 		</div>
 		<div class="flex flex-col gap-4 mt-10">
