@@ -1,6 +1,10 @@
 import { createWorker } from './worker';
 import Constants from '../utils/constants';
 
+const WHISPER_SAMPLING_RATE = 16_000;
+const MAX_AUDIO_LENGTH = 30; // seconds
+export const MAX_SAMPLES = WHISPER_SAMPLING_RATE * MAX_AUDIO_LENGTH;
+
 interface ProgressItem {
 	file: string;
 	loaded: number;
@@ -11,24 +15,14 @@ interface ProgressItem {
 }
 
 interface TranscriberUpdateData {
-	data: {
-		text: string;
-		chunks: { text: string; timestamp: [number, number | null] }[];
-		tps: number;
-	};
-}
-
-export interface TranscriberData {
-	isBusy: boolean;
+	output: string;
 	tps?: number;
-	text: string;
-	chunks: { text: string; timestamp: [number, number | null] }[];
 }
 
 export class Transcriber {
 	state = $state<'idle' | 'busy' | 'loading'>('idle');
 	progressItems = $state<ProgressItem[]>([]);
-	output = $state<TranscriberData | undefined>(undefined);
+	output = $state<TranscriberUpdateData | undefined>(undefined);
 	model = $state(Constants.DEFAULT_MODEL);
 	multilingual = $state(Constants.DEFAULT_MULTILINGUAL);
 	subtask = $state(Constants.DEFAULT_SUBTASK);
@@ -40,11 +34,16 @@ export class Transcriber {
 		this.worker = createWorker(this.onMessage.bind(this));
 	}
 
+	load() {
+		this.worker.postMessage({ type: 'load' });
+	}
+
 	private onMessage(event: MessageEvent) {
 		const message = event.data;
+		console.log(message.status);
 		switch (message.status) {
 			case 'progress':
-				this.progressItems.map((item) =>{
+				this.progressItems.map((item) => {
 					if (item.file === message.file) {
 						item.progress = message.progress;
 					}
@@ -54,20 +53,14 @@ export class Transcriber {
 			case 'update':
 			case 'complete': {
 				const busy = message.status === 'update';
-				const updateMessage = message as TranscriberUpdateData;
-				this.output = {
-					isBusy: busy,
-					text: updateMessage.data.text,
-					tps: updateMessage.data.tps,
-					chunks: updateMessage.data.chunks
-				};
+				this.output = message;
 				this.state = busy ? 'busy' : 'idle';
 				break;
 			}
 
 			case 'initiate':
 				this.state = 'loading';
-				if(!this.progressItems.some((item) => item.file === message.file)) {
+				if (!this.progressItems.some((item) => item.file === message.file)) {
 					this.progressItems.push(message);
 				}
 				break;
@@ -94,11 +87,11 @@ export class Transcriber {
 		this.state = 'busy';
 
 		this.worker.postMessage({
-			audio,
-			model: this.model,
-			multilingual: this.multilingual,
-			subtask: this.multilingual ? this.subtask : null,
-			language: this.multilingual && this.language !== 'auto' ? this.language : null
+			type: 'generate',
+			data: {
+				audio,
+				language: this.multilingual && this.language !== 'auto' ? this.language : null
+			}
 		});
 	}
 

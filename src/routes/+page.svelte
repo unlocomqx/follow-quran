@@ -1,8 +1,9 @@
 <script lang="ts">
 	import Icon from '@iconify/svelte';
-	import { transcriber } from '$lib/stores/transcriber.svelte';
+	import { MAX_SAMPLES, transcriber } from '$lib/stores/transcriber.svelte';
 
 	let listening = $state<boolean>(false);
+	let buffer: Float32Array = [];
 	let audioContext: AudioContext | null = null;
 	let stream: MediaStream | null = null;
 
@@ -26,14 +27,20 @@
 			if (!transcriber.is_ready()) {
 				return;
 			}
-			console.log(event.data.length);
-			transcriber.start(event.data);
+
+			buffer = new Float32Array([...buffer, ...event.data]);
+			console.log(buffer.length);
+			if (buffer.length >= MAX_SAMPLES) {
+				transcriber.start(buffer);
+				buffer = new Float32Array();
+			}
 		};
 		source.connect(worklet);
 	}
 
 	async function stopListening() {
 		listening = false;
+		buffer = new Float32Array();
 		if (!audioContext || !stream) return;
 		await audioContext.close();
 		stream.getTracks().forEach((track) => track.stop());
@@ -46,12 +53,18 @@
 	<div class="card-body">
 		<h2 class="card-title">Follow The Quran</h2>
 		<p>A web app to follow the Quran recitations automatically.</p>
+		<div>
+			<button class="btn btn-primary" onclick={() => transcriber.load()}>
+				<Icon icon="mdi:robot" />
+				Load AI models
+			</button>
+		</div>
 		<div class="card-actions justify-end">
-			<button class="btn btn-success" onclick={startListening} disabled={listening}>
+			<button class="btn btn-success" disabled={listening} onclick={startListening}>
 				<Icon icon="mdi:microphone" />
 				Start listening
 			</button>
-			<button class="btn btn-error" onclick={stopListening} disabled={!listening}>
+			<button class="btn btn-error" disabled={!listening} onclick={stopListening}>
 				<Icon icon="mdi:stop" />
 				Stop
 			</button>
@@ -67,8 +80,6 @@
 			{/each}
 		</div>
 
-		{#each transcriber.output?.chunks??[] as chunk}
-			{chunk.text}
-		{/each}
+		== {transcriber.output?.output} ==
 	</div>
 </div>
