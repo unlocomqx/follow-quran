@@ -35,11 +35,11 @@
 		<h2 class="card-title">Follow The Quran</h2>
 		<p>A web app to follow the Quran recitations automatically.</p>
 		<div class="card-actions justify-end">
-			<button class="btn btn-primary" onclick={startListening}>
+			<button class="btn btn-success" onclick={startListening}>
 				<Icon icon="mdi:microphone" />
 				Start listening
 			</button>
-			<button class="btn btn-primary" onclick={stopListening}>
+			<button class="btn btn-error" onclick={stopListening}>
 				<Icon icon="mdi:stop" />
 				Stop
 			</button>
