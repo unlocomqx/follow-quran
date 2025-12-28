@@ -11,12 +11,12 @@
 		const source = audioContext.createMediaStreamSource(stream);
 
 		await audioContext.audioWorklet.addModule(
-			new URL("$lib/audio-processor.ts", import.meta.url)
+			new URL('$lib/audio-processor.ts', import.meta.url)
 		);
 
-		const worklet = new AudioWorkletNode(audioContext, "audio-processor");
+		const worklet = new AudioWorkletNode(audioContext, 'audio-processor');
 		worklet.port.onmessage = (event) => {
-			if(!transcriber.is_ready()){
+			if (!transcriber.is_ready()) {
 				return;
 			}
 			transcriber.start(event.data);
@@ -48,16 +48,14 @@
 			</button>
 		</div>
 		<div class="flex flex-col gap-4 mt-10">
-			-{transcriber.progressItems.length}-
-			{#key transcriber.progressItems.map(i => i.file)}
 			{#each transcriber.progressItems as item (item.file)}
 				<div class="flex flex-col items-center">
 					<div class="font-mono">
 						{item.file} ({item.progress.toFixed(2)}%) - {item.status}
 					</div>
+					<progress class="progress progress-accent w-56" value={item.progress} max="100"></progress>
 				</div>
 			{/each}
-			{/key}
 		</div>
 	</div>
 </div>
