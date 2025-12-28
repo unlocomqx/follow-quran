@@ -5,5 +5,8 @@ export function createWorker(messageEventHandler: MessageEventHandler): Worker {
 		type: "module"
 	});
 	worker.addEventListener("message", messageEventHandler);
+	worker.addEventListener("error", (event) => {
+		console.error(event.error);
+	});
 	return worker;
 }

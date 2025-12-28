@@ -27,6 +27,7 @@ class AutomaticSpeechRecognitionPipelineFactory {
 	static async getInstance(
 		progress_callback?: ProgressCallback
 	): Promise<AutomaticSpeechRecognitionPipeline> {
+		debugger;
 		if (this.instance === null) {
 			// @ts-expect-error complex union type
 			this.instance = await pipeline(this.task, this.model!, {

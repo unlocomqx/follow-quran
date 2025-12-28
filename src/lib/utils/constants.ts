@@ -13,7 +13,6 @@ function mobileTabletCheck() {
             check = true;
     })(
         navigator.userAgent ||
-            navigator.vendor ||
             ("opera" in window && typeof window.opera === "string"
                 ? window.opera
                 : ""),

@@ -37,12 +37,13 @@ export class Transcriber {
 	private worker: Worker;
 
 	constructor() {
+		console.log('start worker');
 		this.worker = createWorker(this.onMessage.bind(this));
 	}
 
 	private onMessage(event: MessageEvent) {
 		const message = event.data;
-
+		console.log(message.status);
 		switch (message.status) {
 			case "progress":
 				this.progressItems = this.progressItems.map((item) =>
@@ -116,3 +117,5 @@ export class Transcriber {
 		this.output = undefined;
 	}
 }
+
+export const transcriber = new Transcriber()

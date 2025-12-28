@@ -1,5 +1,10 @@
 <script lang="ts">
 	import Icon from '@iconify/svelte';
+	import { transcriber } from '$lib/stores/transcriber.svelte';
+
+	function load_models(){
+		console.log(transcriber);
+	}
 
 	let audioContext: AudioContext | null = null;
 	let stream: MediaStream | null = null;
@@ -34,6 +39,12 @@
 	<div class="card-body">
 		<h2 class="card-title">Follow The Quran</h2>
 		<p>A web app to follow the Quran recitations automatically.</p>
+		<div>
+			<button class="btn btn-primary" onclick={load_models}>
+				<Icon icon="mdi:download" />
+				Load AI models
+			</button>
+		</div>
 		<div class="card-actions justify-end">
 			<button class="btn btn-success" onclick={startListening}>
 				<Icon icon="mdi:microphone" />
