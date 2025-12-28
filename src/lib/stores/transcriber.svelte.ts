@@ -1,5 +1,5 @@
-import { createWorker } from "./worker";
-import Constants from "../utils/constants";
+import { createWorker } from './worker';
+import Constants from '../utils/constants';
 
 interface ProgressItem {
 	file: string;
@@ -27,7 +27,7 @@ export interface TranscriberData {
 
 export class Transcriber {
 	state = $state<'idle' | 'busy' | 'loading'>('idle');
-	progressItems = $state<ProgressItem[]>([]);
+	progressItems = $state.raw<ProgressItem[]>([]);
 	output = $state<TranscriberData | undefined>(undefined);
 	model = $state(Constants.DEFAULT_MODEL);
 	multilingual = $state(Constants.DEFAULT_MULTILINGUAL);
@@ -37,15 +37,14 @@ export class Transcriber {
 	private worker: Worker;
 
 	constructor() {
-		console.log('start worker');
 		this.worker = createWorker(this.onMessage.bind(this));
 	}
 
 	private onMessage(event: MessageEvent) {
 		const message = event.data;
-		console.log(message.status);
 		switch (message.status) {
 			case 'progress':
+				console.log(message.file);
 				this.progressItems = this.progressItems.map((item) =>
 					item.file === message.file ? { ...item, progress: message.progress } : item
 				);
@@ -103,6 +102,10 @@ export class Transcriber {
 	clearOutput() {
 		this.output = undefined;
 	}
+
+	is_ready() {
+		return this.state === 'idle';
+	}
 }
 
-export const transcriber = new Transcriber()
+export const transcriber = new Transcriber();

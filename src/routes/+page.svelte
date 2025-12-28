@@ -16,8 +16,10 @@
 
 		const worklet = new AudioWorkletNode(audioContext, "audio-processor");
 		worklet.port.onmessage = (event) => {
-			console.log('start');
-			// transcriber.start(event.data);
+			if(!transcriber.is_ready()){
+				return;
+			}
+			transcriber.start(event.data);
 		};
 		source.connect(worklet);
 	}
@@ -45,12 +47,17 @@
 				Stop
 			</button>
 		</div>
-		<div>
+		<div class="flex flex-col gap-4 mt-10">
+			-{transcriber.progressItems.length}-
+			{#key transcriber.progressItems.map(i => i.file)}
 			{#each transcriber.progressItems as item (item.file)}
-				<div>
-					{item.name} ({item.progress}%) - {item.status}
+				<div class="flex flex-col items-center">
+					<div class="font-mono">
+						{item.file} ({item.progress.toFixed(2)}%) - {item.status}
+					</div>
 				</div>
 			{/each}
+			{/key}
 		</div>
 	</div>
 </div>
