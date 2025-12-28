@@ -27,7 +27,7 @@ export interface TranscriberData {
 
 export class Transcriber {
 	state = $state<'idle' | 'busy' | 'loading'>('idle');
-	progressItems = $state.raw<ProgressItem[]>([]);
+	progressItems = $state<ProgressItem[]>([]);
 	output = $state<TranscriberData | undefined>(undefined);
 	model = $state(Constants.DEFAULT_MODEL);
 	multilingual = $state(Constants.DEFAULT_MULTILINGUAL);
@@ -42,12 +42,15 @@ export class Transcriber {
 
 	private onMessage(event: MessageEvent) {
 		const message = event.data;
+		console.log(message.status);
 		switch (message.status) {
 			case 'progress':
 				console.log(message.file);
-				this.progressItems = this.progressItems.map((item) =>
-					item.file === message.file ? { ...item, progress: message.progress } : item
-				);
+				this.progressItems.map((item) => {
+					if (item.file === message.file) {
+						item.progress = message.progress;
+					}
+				});
 				break;
 
 			case 'update':
@@ -66,7 +69,7 @@ export class Transcriber {
 
 			case 'initiate':
 				this.state = 'loading';
-				this.progressItems = [...this.progressItems, message];
+				this.progressItems.push(message);
 				break;
 
 			case 'ready':
