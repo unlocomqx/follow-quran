@@ -109,13 +109,6 @@ export class Transcriber {
 	is_ready() {
 		return this.state === 'idle';
 	}
-
-	testAdd() {
-		this.progressItems = [
-			...this.progressItems,
-			{ file: 'test.bin', loaded: 0, progress: 50, total: 100, name: 'test', status: 'loading' }
-		];
-	}
 }
 
 export const transcriber = new Transcriber();
