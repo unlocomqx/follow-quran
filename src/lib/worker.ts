@@ -1,124 +1,117 @@
-import { pipeline, WhisperTextStreamer } from '@huggingface/transformers';
+import {
+	pipeline,
+	WhisperTextStreamer,
+	type AutomaticSpeechRecognitionPipeline,
+	type ProgressCallback
+} from "@huggingface/transformers";
 
-// Define model factories
-// Ensures only one model is created of each type
-class PipelineFactory {
-	static task = null;
-	static tokenizer = null;
-	static model = null;
-	static instance = null;
+interface TranscribeMessage {
+	audio: Float32Array;
+	model: string;
+	subtask: string | null;
+	language: string | null;
+}
 
-	constructor(tokenizer, model) {
-		this.tokenizer = tokenizer;
-		this.model = model;
-	}
+interface Chunk {
+	text: string;
+	timestamp: [number, number | null];
+	finalised: boolean;
+	offset: number;
+}
 
-	static async getInstance(progress_callback = null) {
+class AutomaticSpeechRecognitionPipelineFactory {
+	static task = "automatic-speech-recognition" as const;
+	static model: string | null = null;
+	static instance: AutomaticSpeechRecognitionPipeline | null = null;
+
+	static async getInstance(
+		progress_callback?: ProgressCallback
+	): Promise<AutomaticSpeechRecognitionPipeline> {
 		if (this.instance === null) {
-			this.instance = pipeline(this.task, this.model, {
+			// @ts-expect-error complex union type
+			this.instance = await pipeline(this.task, this.model!, {
 				dtype: {
-					encoder_model: this.model === 'onnx-community/whisper-large-v3-turbo' ? 'fp16' : 'fp32',
-					decoder_model_merged: 'q4' // or 'fp32' ('fp16' is broken)
+					encoder_model: this.model === "onnx-community/whisper-large-v3-turbo" ? "fp16" : "fp32",
+					decoder_model_merged: "q4"
 				},
-				device: 'webgpu',
+				device: "webgpu",
 				progress_callback
 			});
 		}
-
 		return this.instance;
 	}
 }
 
-self.addEventListener('message', async (event) => {
-	const message = event.data;
-
-	// Do some work...
-	// TODO use message data
-	let transcript = await transcribe(message);
+self.addEventListener("message", async (event: MessageEvent<TranscribeMessage>) => {
+	const transcript = await transcribe(event.data);
 	if (transcript === null) return;
 
-	// Send the result back to the main thread
 	self.postMessage({
-		status: 'complete',
+		status: "complete",
 		data: transcript
 	});
 });
 
-class AutomaticSpeechRecognitionPipelineFactory extends PipelineFactory {
-	static task = 'automatic-speech-recognition';
-	static model = null;
-}
-
-const transcribe = async ({ audio, model, subtask, language }) => {
-	const isDistilWhisper = model.startsWith('distil-whisper/');
-
+const transcribe = async ({ audio, model, subtask, language }: TranscribeMessage) => {
+	const isDistilWhisper = model.startsWith("distil-whisper/");
 	const p = AutomaticSpeechRecognitionPipelineFactory;
-	if (p.model !== model) {
-		// Invalidate model if different
-		p.model = model;
 
+	if (p.model !== model) {
+		p.model = model;
 		if (p.instance !== null) {
-			(await p.getInstance())?.dispose();
+			await p.instance.dispose();
 			p.instance = null;
 		}
 	}
 
-	// Load transcriber model
 	const transcriber = await p.getInstance((data) => {
 		self.postMessage(data);
 	});
 
 	const time_precision =
-		transcriber.processor.feature_extractor.config.chunk_length /
-		transcriber.model.config.max_source_positions;
+		(transcriber.processor.feature_extractor as any).config.chunk_length /
+		(transcriber.model.config as any).max_source_positions;
 
-	// Storage for chunks to be processed. Initialise with an empty chunk.
-	/** @type {{ text: string; offset: number, timestamp: [number, number | null] }[]} */
-	const chunks = [];
-
-	// TODO: Storage for fully-processed and merged chunks
-	// let decoded_chunks = [];
-
+	const chunks: Chunk[] = [];
 	const chunk_length_s = isDistilWhisper ? 20 : 30;
 	const stride_length_s = isDistilWhisper ? 3 : 5;
 
 	let chunk_count = 0;
-	let start_time;
+	let start_time: number | null = null;
 	let num_tokens = 0;
-	let tps;
+	let tps: number | undefined;
+
+	// @ts-expect-error tokenizer type mismatch
 	const streamer = new WhisperTextStreamer(transcriber.tokenizer, {
 		time_precision,
-		on_chunk_start: (x) => {
+		on_chunk_start: (x: number) => {
 			const offset = (chunk_length_s - stride_length_s) * chunk_count;
 			chunks.push({
-				text: '',
+				text: "",
 				timestamp: [offset + x, null],
 				finalised: false,
 				offset
 			});
 		},
-		token_callback_function: (x) => {
+		token_callback_function: () => {
 			start_time ??= performance.now();
 			if (num_tokens++ > 0) {
 				tps = (num_tokens / (performance.now() - start_time)) * 1000;
 			}
 		},
-		callback_function: (x) => {
-			if (chunks.length === 0) return;
-			// Append text to the last chunk
-			chunks.at(-1).text += x;
+		callback_function: (x: string) => {
+			const current = chunks.at(-1);
+			if (!current) return;
+			current.text += x;
 
 			self.postMessage({
-				status: 'update',
-				data: {
-					text: '', // No need to send full text yet
-					chunks,
-					tps
-				}
+				status: "update",
+				data: { text: "", chunks, tps }
 			});
 		},
-		on_chunk_end: (x) => {
+		on_chunk_end: (x: number) => {
 			const current = chunks.at(-1);
+			if (!current) return;
 			current.timestamp[1] = x + current.offset;
 			current.finalised = true;
 		},
@@ -129,37 +122,21 @@ const transcribe = async ({ audio, model, subtask, language }) => {
 		}
 	});
 
-	// Actually run transcription
 	const output = await transcriber(audio, {
-		// Greedy
 		top_k: 0,
 		do_sample: false,
-
-		// Sliding window
 		chunk_length_s,
 		stride_length_s,
-
-		// Language and task
-		language,
-		task: subtask,
-
-		// Return timestamps
+		language: language ?? undefined,
+		task: subtask ?? undefined,
 		return_timestamps: true,
 		force_full_sequences: false,
-
-		// Callback functions
-		streamer // after each generation step
+		streamer
 	}).catch((error) => {
 		console.error(error);
-		self.postMessage({
-			status: 'error',
-			data: error
-		});
+		self.postMessage({ status: "error", data: error });
 		return null;
 	});
 
-	return {
-		tps,
-		...output
-	};
+	return output ? { tps, ...output } : null;
 };
