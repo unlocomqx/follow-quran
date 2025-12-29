@@ -71,6 +71,9 @@
 
 	onMount(() => {
 		transcriber.load();
+		transcriber.onComplete((text) => {
+			if (text) transcriber.search(text);
+		});
 	});
 </script>
 

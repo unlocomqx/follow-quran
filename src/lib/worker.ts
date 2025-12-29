@@ -6,19 +6,24 @@ import {
 	full,
 	type PreTrainedTokenizer,
 	type Processor,
-	type ProgressCallback
+	type ProgressCallback, pipeline
 } from "@huggingface/transformers";
+import { downloadFile } from "@huggingface/hub";
 
 const MAX_NEW_TOKENS = 64;
 
 class AutomaticSpeechRecognitionPipeline {
 	static model_id: string | null = null;
+	static search_model_id: string | null = null;
 	static tokenizer: Promise<PreTrainedTokenizer> | null = null;
 	static processor: Promise<Processor> | null = null;
 	static model: Promise<InstanceType<typeof WhisperForConditionalGeneration>> | null = null;
+	static search_model
+	static embeddings_promise
 
 	static async getInstance(progress_callback?: ProgressCallback) {
 		this.model_id = 'eventhorizon0/tarteel-ai-onnx-whisper-base-ar-quran';
+		this.search_model_id = "Xenova/all-MiniLM-L6-v2";
 
 		this.tokenizer ??= AutoTokenizer.from_pretrained(this.model_id, {
 			progress_callback
@@ -36,8 +41,38 @@ class AutomaticSpeechRecognitionPipeline {
 			progress_callback
 		}) as Promise<InstanceType<typeof WhisperForConditionalGeneration>>;
 
-		return Promise.all([this.tokenizer, this.processor, this.model]);
+		this.search_model ??= await pipeline('feature-extraction', this.search_model_id);
+
+		this.embeddings_promise ??= downloadFile({
+			repo: 'eventhorizon0/quran-embeddings-ar',
+			path: 'data/quran_embeddings.json'
+		}).then((blob) => blob?.text()).then((text) => text && JSON.parse(text));
+
+		return Promise.all([this.tokenizer, this.processor, this.model, this.search_model, this.embeddings_promise]);
 	}
+}
+
+async function load() {
+	self.postMessage({
+		status: "loading",
+		data: "Loading model..."
+	});
+
+	const [, , model] = await AutomaticSpeechRecognitionPipeline.getInstance((x) => {
+		self.postMessage(x);
+	});
+
+	self.postMessage({
+		status: "loading",
+		data: "Compiling shaders and warming up model..."
+	});
+
+	await (model.generate as CallableFunction)({
+		input_features: full([1, 80, 3000], 0.0),
+		max_new_tokens: 1
+	});
+
+	self.postMessage({ status: "ready" });
 }
 
 let processing = false;
@@ -46,7 +81,7 @@ async function generate({ audio, language }: { audio: Float32Array; language?: s
 	if (processing) return;
 	processing = true;
 
-	self.postMessage({ status: "start" });
+	self.postMessage({ status: 'start' });
 
 	const [tokenizer, processor, model] = await AutomaticSpeechRecognitionPipeline.getInstance();
 
@@ -61,7 +96,7 @@ async function generate({ audio, language }: { audio: Float32Array; language?: s
 			tps = (numTokens / (performance.now() - startTime)) * 1000;
 		}
 		self.postMessage({
-			status: "update",
+			status: 'update',
 			output,
 			tps,
 			numTokens
@@ -88,33 +123,14 @@ async function generate({ audio, language }: { audio: Float32Array; language?: s
 	});
 
 	self.postMessage({
-		status: "complete",
+		status: 'complete',
 		output: outputText
 	});
 	processing = false;
 }
 
-async function load() {
-	self.postMessage({
-		status: "loading",
-		data: "Loading model..."
-	});
+async function search(text: string) {
 
-	const [, , model] = await AutomaticSpeechRecognitionPipeline.getInstance((x) => {
-		self.postMessage(x);
-	});
-
-	self.postMessage({
-		status: "loading",
-		data: "Compiling shaders and warming up model..."
-	});
-
-	await (model.generate as CallableFunction)({
-		input_features: full([1, 80, 3000], 0.0),
-		max_new_tokens: 1
-	});
-
-	self.postMessage({ status: "ready" });
 }
 
 self.addEventListener("message", async (e: MessageEvent) => {
@@ -126,6 +142,9 @@ self.addEventListener("message", async (e: MessageEvent) => {
 			break;
 		case "generate":
 			await generate(data);
+			break;
+		case "search":
+			await search(data);
 			break;
 	}
 });

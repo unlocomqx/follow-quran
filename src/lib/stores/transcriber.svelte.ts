@@ -29,8 +29,7 @@ export class Transcriber {
 	progressItems = $state<ProgressItem[]>([]);
 	output = $state<OutputData | undefined>(undefined);
 	model = $state(Constants.DEFAULT_MODEL);
-	multilingual = $state(Constants.DEFAULT_MULTILINGUAL);
-	language = $state<string | undefined>(Constants.DEFAULT_LANGUAGE);
+	complete_callback?: (text: string | undefined) => void;
 
 	private worker: Worker;
 
@@ -55,8 +54,8 @@ export class Transcriber {
 				break;
 
 			case 'complete': {
-				console.log('complete', message.output.join(' '));
 				this.output = { text: message.output.join(' '), tps: message.tps };
+				this.complete_callback?.(this.output?.text);
 				break;
 			}
 
@@ -82,6 +81,10 @@ export class Transcriber {
 		}
 	}
 
+	onComplete(cb: (text: string | undefined) => void) {
+		this.complete_callback = cb;
+	}
+
 	start(audio: Float32Array) {
 		if (!audio) return;
 
@@ -90,6 +93,15 @@ export class Transcriber {
 			data: {
 				audio,
 				language: 'ar'
+			}
+		});
+	}
+
+	search(text: string) {
+		this.worker.postMessage({
+			type: 'search',
+			data: {
+				text
 			}
 		});
 	}
