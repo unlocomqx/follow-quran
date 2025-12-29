@@ -53,6 +53,7 @@
 		"vitest-browser-svelte": "^2.0.1"
 	},
 	"dependencies": {
+		"@huggingface/hub": "^2.7.1",
 		"@huggingface/transformers": "^3.8.1",
 		"@iconify/svelte": "^5.1.0",
 		"postgres": "^3.4.7"
