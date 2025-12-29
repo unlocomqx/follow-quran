@@ -13,13 +13,13 @@ import { downloadFile } from '@huggingface/hub';
 
 const MAX_NEW_TOKENS = 64;
 const EMBEDDINGS_CACHE_KEY =
-	'https://huggingface.co/eventhorizon0/quran-embeddings-ar/resolve/main/data/quran_embeddings.json';
+	'https://huggingface.co/datasets/eventhorizon0/quran-embeddings-ar/resolve/main/data/quran_embeddings.json';
 
 const HF_REPO = 'eventhorizon0/quran-embeddings-ar';
 const HF_PATH = 'data/quran_embeddings.json';
 
 async function getRemoteSha(): Promise<string | null> {
-	const res = await fetch(`https://huggingface.co/api/models/${HF_REPO}`);
+	const res = await fetch(`https://huggingface.co/api/datasets/${HF_REPO}`);
 	if (!res.ok) return null;
 	const info = await res.json();
 	return info.sha || null;
@@ -36,9 +36,8 @@ async function loadEmbeddingsWithCache() {
 	}
 
 	const blob = await downloadFile({
-		repo: HF_REPO,
-		path: HF_PATH,
-		revision: remoteSha
+		repo: { type: 'dataset', name: HF_REPO },
+		path: HF_PATH
 	});
 	if (!blob) throw new Error('Failed to download embeddings');
 
