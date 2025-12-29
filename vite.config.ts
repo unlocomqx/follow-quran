@@ -39,5 +39,10 @@ export default defineConfig({
 				}
 			}
 		]
+	},
+
+	server:{
+		cors: true,
+		host: '0.0.0.0',
 	}
 });
