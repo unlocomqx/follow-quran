@@ -163,10 +163,20 @@ async function generate({ audio, language }: { audio: Float32Array; language?: s
 	processing = false;
 }
 
-async function search(text: string) {
+async function search({ text, current_surah }: { text: string; current_surah?: number }) {
+	if (current_surah) {
+		const results = await searchWithinSurah(text, current_surah);
+		const trusted_results = results.filter((v) => v.score > 0.75);
+		console.log('same surah', removeDiacritics(text), trusted_results);
+		if(trusted_results.length > 0) {
+			self.postMessage({ status: 'search_complete', results: trusted_results });
+			return;
+		}
+	}
 	const results = await searchQuran(text);
-	console.log(removeDiacritics(text), results);
-	self.postMessage({ status: 'search', results });
+	const trusted_results = results.filter((v) => v.score > 0.75);
+	console.log('full search', removeDiacritics(text), trusted_results);
+	self.postMessage({ status: 'search_complete', results: trusted_results });
 }
 
 self.addEventListener('message', async (e: MessageEvent) => {
@@ -180,13 +190,28 @@ self.addEventListener('message', async (e: MessageEvent) => {
 			await generate(data);
 			break;
 		case 'search':
-			await search(data.text);
+			await search(data);
 			break;
 	}
 });
 
 function removeDiacritics(text: string): string {
 	return text.replace(/[\u064B-\u065F\u0670]/g, '');
+}
+
+async function searchWithinSurah(query: string, current_surah: number, topK = 10) {
+	const [, , , verses] = await AutomaticSpeechRecognitionPipeline.getInstance();
+	const normalizedQuery = removeDiacritics(query);
+
+	return verses
+		.filter((v) =>  v.surah === current_surah)
+		.map((verse) => ({
+			...verse,
+			score: phraseMatchScore(normalizedQuery, removeDiacritics(verse.text))
+		}))
+		.filter((v) => v.score > 0)
+		.sort((a, b) => b.score - a.score)
+		.slice(0, topK);
 }
 
 async function searchQuran(query: string, topK = 10) {

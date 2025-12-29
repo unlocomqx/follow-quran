@@ -74,6 +74,9 @@
 		transcriber.onComplete((text) => {
 			if (text) transcriber.search(text);
 		});
+		transcriber.onSearchComplete(() => {
+			console.log(transcriber.result);
+		});
 	});
 </script>
 

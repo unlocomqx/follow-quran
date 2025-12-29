@@ -14,22 +14,27 @@ interface ProgressItem {
 	status: string;
 }
 
-interface TranscriberUpdateData {
-	output: string;
-	tps?: number;
-}
-
 interface OutputData {
 	text: string;
 	tps?: number;
+}
+
+interface ResultData {
+	surah: number;
+	ayah: number;
 }
 
 export class Transcriber {
 	state = $state<'idle' | 'busy' | 'loading' | 'ready'>('idle');
 	progressItems = $state<ProgressItem[]>([]);
 	output = $state<OutputData | undefined>(undefined);
+	result = $state<ResultData | undefined>(undefined);
 	model = $state(Constants.DEFAULT_MODEL);
 	complete_callback?: (text: string | undefined) => void;
+	search_complete_callback?: () => void;
+
+	current_surah = $state<number | undefined>(undefined);
+	current_ayah = $state<number | undefined>(undefined);
 
 	private worker: Worker;
 
@@ -44,6 +49,13 @@ export class Transcriber {
 	private onMessage(event: MessageEvent) {
 		const message = event.data;
 		switch (message.status) {
+			case 'initiate':
+				this.state = 'loading';
+				if (!this.progressItems.some((item) => item.file === message.file)) {
+					this.progressItems.push(message);
+				}
+				break;
+
 			case 'progress':
 				this.state = 'loading';
 				this.progressItems.map((item) => {
@@ -53,21 +65,12 @@ export class Transcriber {
 				});
 				break;
 
-			case 'complete': {
-				this.output = { text: message.output.join(' '), tps: message.tps };
-				this.complete_callback?.(this.output?.text);
-				break;
-			}
-
-			case 'initiate':
-				this.state = 'loading';
-				if (!this.progressItems.some((item) => item.file === message.file)) {
-					this.progressItems.push(message);
-				}
-				break;
-
 			case 'ready':
 				this.state = 'ready';
+				break;
+
+			case 'done':
+				this.progressItems = this.progressItems.filter((item) => item.file !== message.file);
 				break;
 
 			case 'error':
@@ -75,14 +78,24 @@ export class Transcriber {
 				alert(`Error: "${message.data.message}"`);
 				break;
 
-			case 'done':
-				this.progressItems = this.progressItems.filter((item) => item.file !== message.file);
+			case 'complete':
+				this.output = { text: message.output.join(' '), tps: message.tps };
+				this.complete_callback?.(this.output?.text);
+				break;
+
+			case 'search_complete':
+				this.result = { surah: message.surah, ayah: message.ayah };
+				this.search_complete_callback?.();
 				break;
 		}
 	}
 
 	onComplete(cb: (text: string | undefined) => void) {
 		this.complete_callback = cb;
+	}
+
+	onSearchComplete(cb: () => void) {
+		this.search_complete_callback = cb;
 	}
 
 	start(audio: Float32Array) {
@@ -101,7 +114,8 @@ export class Transcriber {
 		this.worker.postMessage({
 			type: 'search',
 			data: {
-				text
+				text,
+				current_surah: this.current_surah
 			}
 		});
 	}
