@@ -1,16 +1,54 @@
 import {
-	AutoTokenizer,
 	AutoProcessor,
-	WhisperForConditionalGeneration,
-	TextStreamer,
+	AutoTokenizer,
 	full,
+	pipeline,
 	type PreTrainedTokenizer,
 	type Processor,
-	type ProgressCallback, pipeline
-} from "@huggingface/transformers";
-import { downloadFile } from "@huggingface/hub";
+	type ProgressCallback,
+	TextStreamer,
+	WhisperForConditionalGeneration
+} from '@huggingface/transformers';
+import { downloadFile } from '@huggingface/hub';
 
 const MAX_NEW_TOKENS = 64;
+const EMBEDDINGS_CACHE_KEY =
+	'https://huggingface.co/eventhorizon0/quran-embeddings-ar/resolve/main/data/quran_embeddings.json';
+
+const HF_REPO = 'eventhorizon0/quran-embeddings-ar';
+const HF_PATH = 'data/quran_embeddings.json';
+
+async function getRemoteSha(): Promise<string | null> {
+	const res = await fetch(`https://huggingface.co/api/models/${HF_REPO}`);
+	if (!res.ok) return null;
+	const info = await res.json();
+	return info.sha || null;
+}
+
+async function loadEmbeddingsWithCache() {
+	const cache = await caches.open('quran-embeddings');
+	const remoteSha = await getRemoteSha();
+	const cacheKey = `${EMBEDDINGS_CACHE_KEY}?sha=${remoteSha}`;
+	const cached = await cache.match(cacheKey);
+
+	if (cached) {
+		return cached.json();
+	}
+
+	const blob = await downloadFile({
+		repo: HF_REPO,
+		path: HF_PATH,
+		revision: remoteSha
+	});
+	if (!blob) throw new Error('Failed to download embeddings');
+
+	const text = await blob.text();
+	await cache.put(
+		cacheKey,
+		new Response(text, { headers: { 'Content-Type': 'application/json' } })
+	);
+	return JSON.parse(text);
+}
 
 class AutomaticSpeechRecognitionPipeline {
 	static model_id: string | null = null;
@@ -18,12 +56,12 @@ class AutomaticSpeechRecognitionPipeline {
 	static tokenizer: Promise<PreTrainedTokenizer> | null = null;
 	static processor: Promise<Processor> | null = null;
 	static model: Promise<InstanceType<typeof WhisperForConditionalGeneration>> | null = null;
-	static search_model
-	static embeddings_promise
+	static search_model;
+	static embeddings_promise;
 
 	static async getInstance(progress_callback?: ProgressCallback) {
 		this.model_id = 'eventhorizon0/tarteel-ai-onnx-whisper-base-ar-quran';
-		this.search_model_id = "Xenova/all-MiniLM-L6-v2";
+		this.search_model_id = 'Xenova/paraphrase-multilingual-MiniLM-L12-v2';
 
 		this.tokenizer ??= AutoTokenizer.from_pretrained(this.model_id, {
 			progress_callback
@@ -34,28 +72,33 @@ class AutomaticSpeechRecognitionPipeline {
 
 		this.model ??= WhisperForConditionalGeneration.from_pretrained(this.model_id, {
 			dtype: {
-				encoder_model: "fp32",
-				decoder_model_merged: "q4"
+				encoder_model: 'fp32',
+				decoder_model_merged: 'q4'
 			},
 			device: 'webgpu',
 			progress_callback
 		}) as Promise<InstanceType<typeof WhisperForConditionalGeneration>>;
 
-		this.search_model ??= await pipeline('feature-extraction', this.search_model_id);
+		this.search_model ??= await pipeline('feature-extraction', this.search_model_id,{
+			progress_callback
+		});
 
-		this.embeddings_promise ??= downloadFile({
-			repo: 'eventhorizon0/quran-embeddings-ar',
-			path: 'data/quran_embeddings.json'
-		}).then((blob) => blob?.text()).then((text) => text && JSON.parse(text));
+		this.embeddings_promise ??= loadEmbeddingsWithCache();
 
-		return Promise.all([this.tokenizer, this.processor, this.model, this.search_model, this.embeddings_promise]);
+		return Promise.all([
+			this.tokenizer,
+			this.processor,
+			this.model,
+			this.search_model,
+			this.embeddings_promise
+		]);
 	}
 }
 
 async function load() {
 	self.postMessage({
-		status: "loading",
-		data: "Loading model..."
+		status: 'loading',
+		data: 'Loading model...'
 	});
 
 	const [, , model] = await AutomaticSpeechRecognitionPipeline.getInstance((x) => {
@@ -63,8 +106,8 @@ async function load() {
 	});
 
 	self.postMessage({
-		status: "loading",
-		data: "Compiling shaders and warming up model..."
+		status: 'loading',
+		data: 'Compiling shaders and warming up model...'
 	});
 
 	await (model.generate as CallableFunction)({
@@ -72,7 +115,7 @@ async function load() {
 		max_new_tokens: 1
 	});
 
-	self.postMessage({ status: "ready" });
+	self.postMessage({ status: 'ready' });
 }
 
 let processing = false;
@@ -130,21 +173,46 @@ async function generate({ audio, language }: { audio: Float32Array; language?: s
 }
 
 async function search(text: string) {
+	console.log(text );
+	const results = await searchQuran(text);
 
+	results.sort((a, b) => b.score - a.score);
+
+	console.log(results);
+
+	self.postMessage({
+		status: 'search',
+		results
+	});
 }
 
-self.addEventListener("message", async (e: MessageEvent) => {
+self.addEventListener('message', async (e: MessageEvent) => {
 	const { type, data } = e.data;
 
 	switch (type) {
-		case "load":
+		case 'load':
 			await load();
 			break;
-		case "generate":
+		case 'generate':
 			await generate(data);
 			break;
-		case "search":
+		case 'search':
 			await search(data);
 			break;
 	}
 });
+
+async function searchQuran(query, topK = 30) {
+	const [, , , extractor, embeddings] = await AutomaticSpeechRecognitionPipeline.getInstance();
+	const output = await extractor(query, { pooling: 'mean', normalize: true });
+	const queryEmb = Array.from(output.data);
+
+	return embeddings
+		.map((e) => ({ ...e, score: dotProduct(queryEmb, e.embedding) }))
+		.sort((a, b) => b.score - a.score)
+		.slice(0, topK);
+}
+
+function dotProduct(a, b) {
+	return a.reduce((sum, val, i) => sum + val * b[i], 0);
+}
