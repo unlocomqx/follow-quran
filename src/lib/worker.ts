@@ -196,17 +196,18 @@ self.addEventListener('message', async (e: MessageEvent) => {
 			await generate(data);
 			break;
 		case 'search':
-			await search(data);
+			await search(data.text);
 			break;
 	}
 });
 
 function removeDiacritics(text: string): string {
-	return String(text).replace(/[\u064B-\u065F\u0670]/g, '');
+	return text.replace(/[\u064B-\u065F\u0670]/g, '');
 }
 
-async function searchQuran(query, topK = 30) {
+async function searchQuran(query: string, topK = 30) {
 	const [, , , extractor, embeddings] = await AutomaticSpeechRecognitionPipeline.getInstance();
+	console.log(query);
 	const output = await extractor(query, { pooling: 'mean', normalize: true });
 	const queryEmb = Array.from(output.data);
 
