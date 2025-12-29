@@ -172,8 +172,8 @@ async function generate({ audio, language }: { audio: Float32Array; language?: s
 }
 
 async function search(text: string) {
-	console.log(text );
-	const results = await searchQuran(text);
+	const query = removeDiacritics(text);
+	const results = await searchQuran(query);
 
 	results.sort((a, b) => b.score - a.score);
 
@@ -200,6 +200,10 @@ self.addEventListener('message', async (e: MessageEvent) => {
 			break;
 	}
 });
+
+function removeDiacritics(text: string): string {
+	return String(text).replace(/[\u064B-\u065F\u0670]/g, '');
+}
 
 async function searchQuran(query, topK = 30) {
 	const [, , , extractor, embeddings] = await AutomaticSpeechRecognitionPipeline.getInstance();
