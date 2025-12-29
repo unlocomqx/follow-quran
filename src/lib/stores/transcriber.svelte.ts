@@ -2,7 +2,7 @@ import { createWorker } from './worker';
 import Constants from '../utils/constants';
 
 export const WHISPER_SAMPLING_RATE = 16_000;
-const MAX_AUDIO_LENGTH = 30; // seconds
+const MAX_AUDIO_LENGTH = 5; // seconds
 export const MAX_SAMPLES = WHISPER_SAMPLING_RATE * MAX_AUDIO_LENGTH;
 
 interface ProgressItem {
@@ -44,7 +44,6 @@ export class Transcriber {
 
 	private onMessage(event: MessageEvent) {
 		const message = event.data;
-
 		switch (message.status) {
 			case 'progress':
 				this.state = 'loading';
@@ -55,8 +54,8 @@ export class Transcriber {
 				});
 				break;
 
-			// case 'update':
 			case 'complete': {
+				console.log('complete', message.output.join(' '));
 				this.output = { text: message.output.join(' '), tps: message.tps };
 				break;
 			}

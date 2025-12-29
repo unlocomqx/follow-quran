@@ -18,7 +18,7 @@ class AutomaticSpeechRecognitionPipeline {
 	static model: Promise<InstanceType<typeof WhisperForConditionalGeneration>> | null = null;
 
 	static async getInstance(progress_callback?: ProgressCallback) {
-		this.model_id = "onnx-community/whisper-base";
+		this.model_id = 'eventhorizon0/tarteel-ai-onnx-whisper-base-ar-quran';
 
 		this.tokenizer ??= AutoTokenizer.from_pretrained(this.model_id, {
 			progress_callback
@@ -32,7 +32,7 @@ class AutomaticSpeechRecognitionPipeline {
 				encoder_model: "fp32",
 				decoder_model_merged: "q4"
 			},
-			device: "webgpu",
+			device: 'webgpu',
 			progress_callback
 		}) as Promise<InstanceType<typeof WhisperForConditionalGeneration>>;
 
@@ -79,7 +79,7 @@ async function generate({ audio, language }: { audio: Float32Array; language?: s
 	const outputs = await model.generate({
 		...inputs,
 		max_new_tokens: MAX_NEW_TOKENS,
-		language,
+		// language,
 		streamer
 	});
 
