@@ -2,7 +2,6 @@ import {
 	AutoProcessor,
 	AutoTokenizer,
 	full,
-	pipeline,
 	type PreTrainedTokenizer,
 	type Processor,
 	type ProgressCallback,
@@ -12,11 +11,17 @@ import {
 import { downloadFile } from '@huggingface/hub';
 
 const MAX_NEW_TOKENS = 64;
-const EMBEDDINGS_CACHE_KEY =
+const VERSES_CACHE_KEY =
 	'https://huggingface.co/datasets/eventhorizon0/quran-embeddings-ar/resolve/main/data/quran_embeddings.json';
 
 const HF_REPO = 'eventhorizon0/quran-embeddings-ar';
 const HF_PATH = 'data/quran_embeddings.json';
+
+interface Verse {
+	surah: number;
+	ayah: number;
+	text: string;
+}
 
 async function getRemoteSha(): Promise<string | null> {
 	const res = await fetch(`https://huggingface.co/api/datasets/${HF_REPO}`);
@@ -25,10 +30,10 @@ async function getRemoteSha(): Promise<string | null> {
 	return info.sha || null;
 }
 
-async function loadEmbeddingsWithCache() {
-	const cache = await caches.open('quran-embeddings');
+async function loadVersesWithCache(): Promise<Verse[]> {
+	const cache = await caches.open('quran-verses');
 	const remoteSha = await getRemoteSha();
-	const cacheKey = `${EMBEDDINGS_CACHE_KEY}?sha=${remoteSha}`;
+	const cacheKey = `${VERSES_CACHE_KEY}?sha=${remoteSha}`;
 	const cached = await cache.match(cacheKey);
 
 	if (cached) {
@@ -39,7 +44,7 @@ async function loadEmbeddingsWithCache() {
 		repo: { type: 'dataset', name: HF_REPO },
 		path: HF_PATH
 	});
-	if (!blob) throw new Error('Failed to download embeddings');
+	if (!blob) throw new Error('Failed to download verses');
 
 	const text = await blob.text();
 	await cache.put(
@@ -51,16 +56,13 @@ async function loadEmbeddingsWithCache() {
 
 class AutomaticSpeechRecognitionPipeline {
 	static model_id: string | null = null;
-	static search_model_id: string | null = null;
 	static tokenizer: Promise<PreTrainedTokenizer> | null = null;
 	static processor: Promise<Processor> | null = null;
 	static model: Promise<InstanceType<typeof WhisperForConditionalGeneration>> | null = null;
-	static search_model;
-	static embeddings_promise;
+	static verses_promise: Promise<Verse[]> | null = null;
 
 	static async getInstance(progress_callback?: ProgressCallback) {
 		this.model_id = 'eventhorizon0/tarteel-ai-onnx-whisper-base-ar-quran';
-		this.search_model_id = 'Xenova/paraphrase-multilingual-MiniLM-L12-v2';
 
 		this.tokenizer ??= AutoTokenizer.from_pretrained(this.model_id, {
 			progress_callback
@@ -78,19 +80,9 @@ class AutomaticSpeechRecognitionPipeline {
 			progress_callback
 		}) as Promise<InstanceType<typeof WhisperForConditionalGeneration>>;
 
-		this.search_model ??= await pipeline('feature-extraction', this.search_model_id,{
-			progress_callback
-		});
+		this.verses_promise ??= loadVersesWithCache();
 
-		this.embeddings_promise ??= loadEmbeddingsWithCache();
-
-		return Promise.all([
-			this.tokenizer,
-			this.processor,
-			this.model,
-			this.search_model,
-			this.embeddings_promise
-		]);
+		return Promise.all([this.tokenizer, this.processor, this.model, this.verses_promise]);
 	}
 }
 
@@ -172,17 +164,9 @@ async function generate({ audio, language }: { audio: Float32Array; language?: s
 }
 
 async function search(text: string) {
-	const query = removeDiacritics(text);
-	const results = await searchQuran(query);
-
-	results.sort((a, b) => b.score - a.score);
-
-	console.log(results);
-
-	self.postMessage({
-		status: 'search',
-		results
-	});
+	const results = await searchQuran(text);
+	console.log(removeDiacritics(text), results);
+	self.postMessage({ status: 'search', results });
 }
 
 self.addEventListener('message', async (e: MessageEvent) => {
@@ -206,17 +190,45 @@ function removeDiacritics(text: string): string {
 }
 
 async function searchQuran(query: string, topK = 30) {
-	const [, , , extractor, embeddings] = await AutomaticSpeechRecognitionPipeline.getInstance();
-	console.log(query);
-	const output = await extractor(query, { pooling: 'mean', normalize: true });
-	const queryEmb = Array.from(output.data);
+	const [, , , verses] = await AutomaticSpeechRecognitionPipeline.getInstance();
+	const normalizedQuery = removeDiacritics(query);
 
-	return embeddings
-		.map((e) => ({ ...e, score: dotProduct(queryEmb, e.embedding) }))
+	return verses
+		.map((verse) => ({
+			...verse,
+			score: phraseMatchScore(normalizedQuery, removeDiacritics(verse.text))
+		}))
+		.filter((v) => v.score > 0)
 		.sort((a, b) => b.score - a.score)
 		.slice(0, topK);
 }
 
-function dotProduct(a, b) {
-	return a.reduce((sum, val, i) => sum + val * b[i], 0);
+function phraseMatchScore(query: string, text: string): number {
+	// exact substring match gets highest score
+	if (text.includes(query)) {
+		return 1 + query.length / text.length;
+	}
+
+	// check word overlap
+	const queryWords = query.split(/\s+/);
+	const textWords = text.split(/\s+/);
+	let matchedWords = 0;
+	let consecutiveBonus = 0;
+	let lastMatchIdx = -2;
+
+	for (const qWord of queryWords) {
+		const idx = textWords.findIndex((tWord) => tWord.includes(qWord) || qWord.includes(tWord));
+		if (idx !== -1) {
+			matchedWords++;
+			if (idx === lastMatchIdx + 1) consecutiveBonus += 0.2;
+			lastMatchIdx = idx;
+		}
+	}
+
+	if (matchedWords === 0) return 0;
+
+	const wordScore = matchedWords / queryWords.length;
+	const lengthPenalty = Math.min(1, query.length / text.length);
+
+	return wordScore * 0.7 + consecutiveBonus + lengthPenalty * 0.1;
 }
