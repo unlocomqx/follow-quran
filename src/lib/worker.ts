@@ -189,7 +189,7 @@ function removeDiacritics(text: string): string {
 	return text.replace(/[\u064B-\u065F\u0670]/g, '');
 }
 
-async function searchQuran(query: string, topK = 30) {
+async function searchQuran(query: string, topK = 10) {
 	const [, , , verses] = await AutomaticSpeechRecognitionPipeline.getInstance();
 	const normalizedQuery = removeDiacritics(query);
 
