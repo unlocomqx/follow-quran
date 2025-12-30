@@ -209,9 +209,9 @@ async function searchQuran(query: string, current_surah?: number, topK = 10) {
 
 	return verses
 		.filter((verse) => !current_surah || verse.surah === current_surah)
-		.map((verse) => ({
+		.map((verse, index) => ({
 			...verse,
-			score: phraseMatchScore(query, verse.text)
+			score: phraseMatchScore(query, combineVerses(verses, index))
 		}))
 		.filter((v) => v.score > 0)
 		.sort((a, b) => b.score - a.score)
@@ -246,4 +246,13 @@ function phraseMatchScore(query: string, text: string): number {
 	const lengthPenalty = Math.min(1, query.length / text.length);
 
 	return wordScore * 0.7 + consecutiveBonus + lengthPenalty * 0.1;
+}
+
+function combineVerses(verses: Verse[], index: number): string {
+	const verse = verses[index];
+	const prevVerse = verses[index - 1];
+	const nextVerse = verses[index + 1];
+	const prevText = prevVerse?.text || '';
+	const nextText = nextVerse?.text || '';
+	return `${verse.text}[${index}]${nextText}`;
 }

@@ -3,7 +3,7 @@ import Constants from '../utils/constants';
 import { surahVerses } from '$lib/surah-verses';
 
 export const WHISPER_SAMPLING_RATE = 16_000;
-const MAX_AUDIO_LENGTH = 10; // seconds
+const MAX_AUDIO_LENGTH = 5; // seconds
 export const MAX_SAMPLES = WHISPER_SAMPLING_RATE * MAX_AUDIO_LENGTH;
 
 interface ProgressItem {
@@ -141,7 +141,7 @@ export class Transcriber {
 		const SURAH_COEFF_MAX = 0.5;
 		const AYAH_COEFF = 1;
 
-		console.log(`🔍 ${this.current_search}`);
+		// console.log(`🔍 ${this.current_search}`);
 
 		const results_with_score = results
 			.map((result) => {
