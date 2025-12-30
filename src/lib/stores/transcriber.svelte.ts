@@ -35,6 +35,7 @@ export class Transcriber {
 	current_search = '';
 	current_surah = 0;
 	current_ayah = 0;
+	surahs_counter: { [key: number]: number } = {};
 	model = $state(Constants.DEFAULT_MODEL);
 	load_callback?: () => void;
 	complete_callback?: (text: string | undefined) => void;
@@ -134,7 +135,7 @@ export class Transcriber {
 		});
 	}
 
-	private filterResults(results: ResultData[]): ResultData {
+	private filterResults(results: ResultData[]): ResultData | undefined {
 		if (!this.current_surah && !this.current_ayah) return results[0];
 
 		const SURAH_COEFF = 10;
@@ -152,7 +153,7 @@ export class Transcriber {
 						SURAH_COEFF_MAX
 					) +
 					(AYAH_COEFF * Math.abs(result.ayah - (this.current_ayah ?? 0) + 1)) / nb_verses / 144;
-				console.log(`${result.score} - ${weight} = ${result.score! - weight} (${result.text})`);
+				// console.log(`${result.score} - ${weight} = ${result.score! - weight} (${result.text})`);
 				return {
 					...result,
 					score: result.score! - weight,
@@ -165,12 +166,10 @@ export class Transcriber {
 		const result = sorted_results[0];
 
 		if (result && this.current_surah && this.current_ayah) {
+			this.surahs_counter[result.surah] = (this.surahs_counter[result.surah] ?? 0) + 1;
 			if (result.surah !== this.current_surah) {
-				console.log(`%cDifferent surah`, 'color: red');
-			}
-
-			if (Math.abs(result.ayah - this.current_ayah) > 1) {
-				console.log(`%cDifferent ayah`, 'color: orange');
+				const surah_count = this.surahs_counter[result.surah] ?? 0;
+				console.log({ surah_count });
 			}
 		}
 
@@ -182,6 +181,10 @@ export class Transcriber {
 		) {
 			console.log(`%cSecond result`, 'color: cyan');
 			return second_result;
+		}
+
+		if (result?.surah === this.current_surah && result?.ayah === this.current_ayah - 1) {
+			return;
 		}
 
 		return result;
