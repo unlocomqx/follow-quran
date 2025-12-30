@@ -75,7 +75,7 @@
 			if (text) transcriber.search(text);
 		});
 		transcriber.onSearchComplete(() => {
-			console.log(transcriber.result);
+			console.log(transcriber.result?.surah, transcriber.result?.ayah, $state.snapshot(transcriber.result?.text));
 		});
 	});
 </script>
@@ -91,7 +91,7 @@
 			</button>
 		</div>
 		<div class="card-actions justify-end">
-			<button class="btn btn-success" disabled={listening} onclick={startListening}>
+			<button class="btn btn-success" disabled={listening || transcriber.state !== 'ready'} onclick={startListening}>
 				<Icon icon="mdi:microphone" />
 				Start listening
 			</button>
