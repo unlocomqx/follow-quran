@@ -254,5 +254,5 @@ function combineVerses(verses: Verse[], index: number): string {
 	const nextVerse = verses[index + 1];
 	const prevText = prevVerse?.text || '';
 	const nextText = nextVerse?.text || '';
-	return `${verse.text}[${index}]${nextText}`;
+	return `${verse.text} ${nextText}`;
 }

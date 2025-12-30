@@ -161,7 +161,7 @@ export class Transcriber {
 			})
 			.filter((v) => v.score > 0.85);
 
-		let sorted_results = results_with_score.sort((a, b) => b.score - a.score);
+		const sorted_results = results_with_score.sort((a, b) => b.score - a.score);
 		const result = sorted_results[0];
 
 		if (result && this.current_surah && this.current_ayah) {
