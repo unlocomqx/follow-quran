@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Icon from '@iconify/svelte';
 	import { MAX_SAMPLES, transcriber, WHISPER_SAMPLING_RATE } from '$lib/stores/transcriber.svelte';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 
 	let listening = $state<boolean>(false);
 	let stream = $state<MediaStream | null>(null);
@@ -70,13 +70,18 @@
 	}
 
 	onMount(() => {
-		transcriber.load();
+		transcriber.load(() => {
+			startListening();
+		});
 		transcriber.onComplete((text) => {
 			if (text) transcriber.search(text);
 		});
 		transcriber.onSearchComplete(() => {
 			console.log(transcriber.result?.surah, transcriber.result?.ayah, $state.snapshot(transcriber.result?.text));
 		});
+	});
+	onDestroy(() => {
+		stopListening()
 	});
 </script>
 

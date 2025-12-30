@@ -36,6 +36,7 @@ export class Transcriber {
 	current_surah = 0;
 	current_ayah = 0;
 	model = $state(Constants.DEFAULT_MODEL);
+	load_callback?: () => void;
 	complete_callback?: (text: string | undefined) => void;
 	search_complete_callback?: () => void;
 
@@ -45,7 +46,8 @@ export class Transcriber {
 		this.worker = createWorker(this.onMessage.bind(this));
 	}
 
-	load() {
+	load(cb?: () => void) {
+		this.load_callback = cb;
 		this.worker.postMessage({ type: 'load' });
 	}
 
@@ -71,6 +73,7 @@ export class Transcriber {
 
 			case 'ready':
 				this.state = 'ready';
+				this.load_callback?.();
 				break;
 
 			case 'done':

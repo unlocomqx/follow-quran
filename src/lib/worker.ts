@@ -8,14 +8,15 @@ import {
 	TextStreamer,
 	WhisperForConditionalGeneration
 } from '@huggingface/transformers';
-import { downloadFile } from '@huggingface/hub';
 
 const MAX_NEW_TOKENS = 64;
 const VERSES_CACHE_KEY =
-	'https://huggingface.co/datasets/eventhorizon0/quran-embeddings-ar/resolve/main/data/quran_embeddings.json';
+	'/quran.json';
 
-const HF_REPO = 'eventhorizon0/quran-embeddings-ar';
-const HF_PATH = 'data/quran_embeddings.json';
+interface Chapter {
+	id: number;
+	verses: Verse[];
+}
 
 interface Verse {
 	surah: number;
@@ -24,10 +25,11 @@ interface Verse {
 }
 
 async function getRemoteSha(): Promise<string | null> {
-	const res = await fetch(`https://huggingface.co/api/datasets/${HF_REPO}`);
+	const res = await fetch(VERSES_CACHE_KEY,{
+		method: 'HEAD'
+	});
 	if (!res.ok) return null;
-	const info = await res.json();
-	return info.sha || null;
+	return res.headers.get('ETag') || null;
 }
 
 async function loadVersesWithCache(): Promise<Verse[]> {
@@ -40,11 +42,8 @@ async function loadVersesWithCache(): Promise<Verse[]> {
 		return cached.json();
 	}
 
-	const blob = await downloadFile({
-		repo: { type: 'dataset', name: HF_REPO },
-		path: HF_PATH
-	});
-	if (!blob) throw new Error('Failed to download verses');
+	const blob = await fetch(VERSES_CACHE_KEY);
+	if (!blob.ok) throw new Error('Failed to download verses');
 
 	const text = await blob.text();
 	await cache.put(
@@ -111,7 +110,7 @@ async function load() {
 
 let processing = false;
 
-async function generate({ audio, language }: { audio: Float32Array; language?: string }) {
+async function generate({ audio }: { audio: Float32Array }) {
 	if (processing) return;
 	processing = true;
 
