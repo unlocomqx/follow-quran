@@ -77,7 +77,7 @@
 			if (text) transcriber.search(text);
 		});
 		transcriber.onSearchComplete(() => {
-			console.log(transcriber.result?.surah, transcriber.result?.ayah, $state.snapshot(transcriber.result?.text));
+			console.log('%c%s %s %s', 'color: lime', transcriber.result?.surah, transcriber.result?.ayah, $state.snapshot(transcriber.result?.text));
 		});
 	});
 	onDestroy(() => {
