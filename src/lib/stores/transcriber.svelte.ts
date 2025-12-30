@@ -1,8 +1,9 @@
 import { createWorker } from './worker';
 import Constants from '../utils/constants';
+import { surahVerses } from '$lib/surah-verses';
 
 export const WHISPER_SAMPLING_RATE = 16_000;
-const MAX_AUDIO_LENGTH = 5; // seconds
+const MAX_AUDIO_LENGTH = 10; // seconds
 export const MAX_SAMPLES = WHISPER_SAMPLING_RATE * MAX_AUDIO_LENGTH;
 
 interface ProgressItem {
@@ -22,6 +23,8 @@ interface OutputData {
 interface ResultData {
 	surah: number;
 	ayah: number;
+	score?: number;
+	text?: string;
 }
 
 export class Transcriber {
@@ -29,12 +32,12 @@ export class Transcriber {
 	progressItems = $state<ProgressItem[]>([]);
 	output = $state<OutputData | undefined>(undefined);
 	result = $state<ResultData | undefined>(undefined);
+	current_search = '';
+	current_surah = 0;
+	current_ayah = 0;
 	model = $state(Constants.DEFAULT_MODEL);
 	complete_callback?: (text: string | undefined) => void;
 	search_complete_callback?: () => void;
-
-	current_surah = $state<number | undefined>(undefined);
-	current_ayah = $state<number | undefined>(undefined);
 
 	private worker: Worker;
 
@@ -48,6 +51,7 @@ export class Transcriber {
 
 	private onMessage(event: MessageEvent) {
 		const message = event.data;
+
 		switch (message.status) {
 			case 'initiate':
 				this.state = 'loading';
@@ -83,10 +87,16 @@ export class Transcriber {
 				this.complete_callback?.(this.output?.text);
 				break;
 
-			case 'search_complete':
-				this.result = { surah: message.surah, ayah: message.ayah };
+			case 'search_complete': {
+				const result = this.filterResults(message.results as ResultData[]);
+				this.result = { ...result };
+				if (result) {
+					this.current_surah = result.surah;
+					this.current_ayah = result.ayah;
+				}
 				this.search_complete_callback?.();
 				break;
+			}
 		}
 	}
 
@@ -111,6 +121,7 @@ export class Transcriber {
 	}
 
 	search(text: string) {
+		this.current_search = text;
 		this.worker.postMessage({
 			type: 'search',
 			data: {
@@ -118,6 +129,48 @@ export class Transcriber {
 				current_surah: this.current_surah
 			}
 		});
+	}
+
+	private filterResults(results: ResultData[]): ResultData {
+		if (!this.current_surah && !this.current_ayah) return results[0];
+
+		const SURAH_COEFF = 10;
+		const SURAH_COEFF_MAX = 0.5;
+		const AYAH_COEFF = 1;
+
+		console.log(`🔍 ${this.current_search}`);
+
+		const results_with_score = results
+			.map((result) => {
+				const nb_verses = surahVerses[result.surah] || 0;
+				const weight =
+					Math.min(
+						(SURAH_COEFF * Math.abs(result.surah - (this.current_surah ?? 0))) / 144,
+						SURAH_COEFF_MAX
+					) +
+					(AYAH_COEFF * Math.abs(result.ayah - (this.current_ayah ?? 0))) / nb_verses / 144;
+				console.log(`${result.score} - ${weight} = ${result.score! - weight} (${result.text})`);
+				return {
+					...result,
+					score: result.score! - weight,
+					weight
+				};
+			})
+			.filter((v) => v.score > 0.85);
+
+		const result = results_with_score.sort((a, b) => b.score - a.score)[0];
+
+		if (result && this.current_surah && this.current_ayah) {
+			if (result.surah !== this.current_surah) {
+				console.log(`%cDifferent surah`, 'color: red');
+			}
+
+			if (Math.abs(result.ayah - this.current_ayah) > 1) {
+				console.log(`%cDifferent ayah`, 'color: orange');
+			}
+		}
+
+		return result;
 	}
 }
 
