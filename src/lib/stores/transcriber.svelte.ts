@@ -151,7 +151,7 @@ export class Transcriber {
 						(SURAH_COEFF * Math.abs(result.surah - (this.current_surah ?? 0))) / 144,
 						SURAH_COEFF_MAX
 					) +
-					(AYAH_COEFF * Math.abs(result.ayah - (this.current_ayah ?? 0))) / nb_verses / 144;
+					(AYAH_COEFF * Math.abs(result.ayah - (this.current_ayah ?? 0) + 1)) / nb_verses / 144;
 				console.log(`${result.score} - ${weight} = ${result.score! - weight} (${result.text})`);
 				return {
 					...result,
@@ -161,7 +161,8 @@ export class Transcriber {
 			})
 			.filter((v) => v.score > 0.85);
 
-		const result = results_with_score.sort((a, b) => b.score - a.score)[0];
+		let sorted_results = results_with_score.sort((a, b) => b.score - a.score);
+		const result = sorted_results[0];
 
 		if (result && this.current_surah && this.current_ayah) {
 			if (result.surah !== this.current_surah) {
@@ -171,6 +172,16 @@ export class Transcriber {
 			if (Math.abs(result.ayah - this.current_ayah) > 1) {
 				console.log(`%cDifferent ayah`, 'color: orange');
 			}
+		}
+
+		const second_result = sorted_results[1];
+		if (
+			second_result?.score >= 0.9 &&
+			second_result?.surah === this.current_surah &&
+			second_result.ayah - this.current_ayah === 1
+		) {
+			console.log(`%cSecond result`, 'color: cyan');
+			return second_result;
 		}
 
 		return result;
