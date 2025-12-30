@@ -3,7 +3,7 @@ import Constants from '../utils/constants';
 import { surahVerses } from '$lib/surah-verses';
 
 export const WHISPER_SAMPLING_RATE = 16_000;
-const MAX_AUDIO_LENGTH = 5; // seconds
+const MAX_AUDIO_LENGTH = 15; // seconds
 export const MAX_SAMPLES = WHISPER_SAMPLING_RATE * MAX_AUDIO_LENGTH;
 
 interface ProgressItem {
@@ -92,8 +92,8 @@ export class Transcriber {
 
 			case 'search_complete': {
 				const result = this.filterResults(message.results as ResultData[]);
-				this.result = { ...result };
 				if (result) {
+					this.result = { ...result };
 					this.current_surah = result.surah;
 					this.current_ayah = result.ayah;
 				}

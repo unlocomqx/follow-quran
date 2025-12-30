@@ -2,6 +2,9 @@
 	import Icon from '@iconify/svelte';
 	import { MAX_SAMPLES, transcriber, WHISPER_SAMPLING_RATE } from '$lib/stores/transcriber.svelte';
 	import { onDestroy, onMount } from 'svelte';
+	import { getAyahMetasForSurah } from 'quran-meta/hafs';
+	import type { AyahMeta, Surah } from 'quran-meta';
+	import { lpad } from '$lib/utils/strings';
 
 	let listening = $state<boolean>(false);
 	let stream = $state<MediaStream | null>(null);
@@ -69,6 +72,8 @@
 		chunks = [];
 	}
 
+	let surahMeta = $state<AyahMeta[] | null>(null);
+	let page = $state<number | null>(null);
 	onMount(() => {
 		transcriber.load(() => {
 			startListening();
@@ -78,12 +83,36 @@
 		});
 		transcriber.onSearchComplete(() => {
 			console.log('%c%s %s %s', 'color: lime', transcriber.result?.surah, transcriber.result?.ayah, $state.snapshot(transcriber.result?.text));
+			if (transcriber.result?.surah) {
+				surahMeta = getAyahMetasForSurah((transcriber.result?.surah ?? 0) as Surah);
+				if (surahMeta) page = surahMeta[transcriber.result?.ayah - 1]?.page ?? null;
+			}
 		});
 	});
 	onDestroy(() => {
-		stopListening()
+		stopListening();
+	});
+
+	let style: HTMLLinkElement | null = null;
+	$effect(() => {
+		if (!style) {
+			style = document.createElement('style') as HTMLLinkElement;
+			document.head.appendChild(style);
+		}
+		style.innerText = `
+			.quran-madina-html-${lpad(transcriber.result?.surah?.toString() ?? '', 3, '0')}-${lpad(transcriber.result?.ayah?.toString() ?? '', 3, '0')} {
+				color: orange;
+			}
+		`;
+		return () => {
+			if (style) style.innerText = '';
+		};
 	});
 </script>
+
+<svelte:head>
+	<script src="/quran-madina-html.min.js" type="text/javascript"></script>
+</svelte:head>
 
 <div class="card bg-base-100 w-xl m-auto my-10 shadow-sm">
 	<div class="card-body">
@@ -123,5 +152,15 @@
 		<p>
 			== {transcriber.result?.text}==
 		</p>
+
+		{#if transcriber.result?.surah && transcriber.result?.ayah}
+			{#key transcriber.result}
+				<div class="text-black">
+					<quran-madina-html {page}
+														 data-font-size="20"
+					></quran-madina-html>
+				</div>
+			{/key}
+		{/if}
 	</div>
 </div>

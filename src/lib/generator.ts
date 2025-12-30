@@ -4,6 +4,7 @@ const chapters = await fetch(json).then((res) => res.json());
 
 const verses_data = chapters
 	.map((c) => {
+		console.log(c.verses.length);
 		return c.verses.map((v) => ({
 			surah: c.id,
 			ayah: v.id,
