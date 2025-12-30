@@ -11,7 +11,7 @@
 
 	async function processChunks() {
 		if (!recorder || !listening || transcriber.state !== 'ready') {
-			return
+			return;
 		}
 		if (chunks.length > 0) {
 			const blob = new Blob(chunks, { type: recorder.mimeType });
@@ -111,6 +111,12 @@
 			{/each}
 		</div>
 
-		== {transcriber.output?.text} ==
+		<p>
+			== {transcriber.output?.text} ==
+		</p>
+
+		<p>
+			== {transcriber.result?.text}==
+		</p>
 	</div>
 </div>
