@@ -9,15 +9,10 @@ import {
 	WhisperForConditionalGeneration
 } from '@huggingface/transformers';
 import { removeDiacritics } from '$lib/utils/strings';
+import { searchQuran, type Verse } from '$lib/utils/search';
 
 const MAX_NEW_TOKENS = 64;
 const VERSES_CACHE_KEY = '/quran.json';
-
-interface Verse {
-	surah: number;
-	ayah: number;
-	text: string;
-}
 
 async function getRemoteSha(): Promise<string | null> {
 	const res = await fetch(VERSES_CACHE_KEY, {
@@ -165,8 +160,11 @@ async function search({ text, current_surah }: { text: string; current_surah?: n
 		self.postMessage({ status: 'search_complete', results: [] });
 		return;
 	}
+
+	const [, , , verses] = await AutomaticSpeechRecognitionPipeline.getInstance();
+
 	if (current_surah) {
-		const within_surah = await searchQuran(query, current_surah);
+		const within_surah = searchQuran(verses, query, current_surah);
 		const trusted_within_surah = within_surah.filter((v) => v.score > 0.85);
 		if (trusted_within_surah.length > 0) {
 			self.postMessage({ status: 'search_complete', results: trusted_within_surah });
@@ -174,9 +172,8 @@ async function search({ text, current_surah }: { text: string; current_surah?: n
 		}
 	}
 
-	const results = await searchQuran(query);
+	const results = searchQuran(verses, query);
 	const trusted_results = results.filter((v) => v.score > 0.85);
-	// console.log('full search', query, trusted_results);
 	self.postMessage({ status: 'search_complete', results: trusted_results });
 }
 
@@ -195,55 +192,3 @@ self.addEventListener('message', async (e: MessageEvent) => {
 			break;
 	}
 });
-
-async function searchQuran(query: string, current_surah?: number, topK = 10) {
-	const [, , , verses] = await AutomaticSpeechRecognitionPipeline.getInstance();
-
-	return verses
-		.filter((verse) => !current_surah || verse.surah === current_surah)
-		.map((verse, index) => ({
-			...verse,
-			score: phraseMatchScore(query, combineVerses(verses, index))
-		}))
-		.filter((v) => v.score > 0)
-		.sort((a, b) => b.score - a.score)
-		.slice(0, topK);
-}
-
-function phraseMatchScore(query: string, text: string): number {
-	const queryWords = query.split(/\s+/);
-
-	// exact substring match gets highest score
-	if (text.includes(query)) {
-		return 1 + query.length / text.length;
-	}
-
-	// check word overlap
-	const textWords = text.split(/\s+/);
-	let matchedWords = 0;
-	let consecutiveBonus = 0;
-	let lastMatchIdx = -2;
-
-	for (const qWord of queryWords) {
-		const idx = textWords.findIndex((tWord) => tWord.includes(qWord) || qWord.includes(tWord));
-		if (idx !== -1) {
-			matchedWords++;
-			if (idx === lastMatchIdx + 1) consecutiveBonus += 0.2;
-			lastMatchIdx = idx;
-		}
-	}
-
-	if (matchedWords === 0) return 0;
-
-	const wordScore = matchedWords / queryWords.length;
-	const lengthPenalty = Math.min(1, query.length / text.length);
-
-	return wordScore * 0.7 + consecutiveBonus + lengthPenalty * 0.1;
-}
-
-function combineVerses(verses: Verse[], index: number): string {
-	const verse = verses[index];
-	const nextVerse = verses[index + 1];
-	const nextText = nextVerse?.text || '';
-	return `${verse.text} ${nextText}`;
-}
