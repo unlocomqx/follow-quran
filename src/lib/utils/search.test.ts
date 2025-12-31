@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { readFile } from 'node:fs/promises';
 import { searchQuran, phraseMatchScore, combineVerses, type Verse } from './search';
 
 const exampleVerses: Verse[] = [
@@ -65,5 +66,12 @@ describe('searchQuran', () => {
 	it('returns empty for empty verses', () => {
 		const results = searchQuran([], 'الحمد لله');
 		expect(results.length).toBe(0);
+	});
+
+	it('should match query correctly', async () => {
+		const verses = JSON.parse(await readFile('static/quran.json', 'utf-8'));
+
+		const results = searchQuran(verses, 'إن ليقولن الذين كفروا إن أنتم إلا مبطلون');
+		console.log(results);
 	});
 });
