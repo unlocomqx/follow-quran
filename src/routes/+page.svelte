@@ -5,7 +5,7 @@
 	import { getAyahMetasForSurah } from 'quran-meta/hafs';
 	import type { AyahMeta, Surah } from 'quran-meta';
 	import { lpad } from '$lib/utils/strings';
-	import { removeDiacritics } from '$lib/utils/strings.ts';
+	import { removeDiacritics } from '$lib/utils/strings';
 
 	let listening = $state<boolean>(false);
 	let stream = $state<MediaStream | null>(null);

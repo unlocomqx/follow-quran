@@ -65,6 +65,7 @@ class AutomaticSpeechRecognitionPipeline {
 			progress_callback
 		});
 
+		// noinspection ES6MissingAwait
 		this.model ??= WhisperForConditionalGeneration.from_pretrained(this.model_id, {
 			dtype: {
 				encoder_model: 'fp32',
@@ -242,9 +243,7 @@ function phraseMatchScore(query: string, text: string): number {
 
 function combineVerses(verses: Verse[], index: number): string {
 	const verse = verses[index];
-	const prevVerse = verses[index - 1];
 	const nextVerse = verses[index + 1];
-	const prevText = prevVerse?.text || '';
 	const nextText = nextVerse?.text || '';
 	return `${verse.text} ${nextText}`;
 }
