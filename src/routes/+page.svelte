@@ -154,14 +154,13 @@
 			== {transcriber.result?.text}==
 		</p>
 
-		{#if page && transcriber.result?.surah && transcriber.result?.ayah}
-			{#key page}
-				<div class="text-black">
-					<quran-madina-html {page}
-														 data-font-size="20"
-					></quran-madina-html>
-				</div>
-			{/key}
+		{#if page}
+			<div class="text-black">
+				<quran-madina-html {page}
+													 data-font="uthman"
+													 data-font-size="20"
+				></quran-madina-html>
+			</div>
 		{/if}
 	</div>
 </div>

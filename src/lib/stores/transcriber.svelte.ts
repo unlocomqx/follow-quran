@@ -170,7 +170,7 @@ export class Transcriber {
 			if (result.surah !== this.current_surah) {
 				const surah_count = this.surahs_counter[result.surah] ?? 0;
 				if (surah_count > 10) {
-					this.surahs_counter = {};
+					this.surahs_counter[result.surah] = 0;
 				} else {
 					return null;
 				}
