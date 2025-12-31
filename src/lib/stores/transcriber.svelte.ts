@@ -29,18 +29,30 @@ interface ResultData {
 }
 
 export class Transcriber {
+	/** transcription state: idle, busy, loading model, or ready */
 	state = $state<'idle' | 'busy' | 'loading' | 'ready'>('idle');
+	/** model download progress items */
 	progressItems = $state<ProgressItem[]>([]);
+	/** transcription output with text and tokens per second */
 	output = $state<OutputData | undefined>(undefined);
+	/** search result with surah/ayah info */
 	result = $state<ResultData | undefined>(undefined);
+	/** current search text for filtering */
 	current_search = '';
+	/** current surah being read */
 	current_surah = 0;
+	/** current ayah being read */
 	current_ayah = 0;
+	/** tracks how many times each surah appears in results for switch detection */
 	surahs_counter: { [key: number]: number } = {};
+	/** number of consecutive hits needed to switch to a new surah */
 	surah_switch_threshold = 5;
 	model = $state(Constants.DEFAULT_MODEL);
+	/** callback when model finishes loading */
 	load_callback?: () => void;
+	/** callback when transcription completes */
 	complete_callback?: (text: string | undefined) => void;
+	/** callback when search completes */
 	search_complete_callback?: () => void;
 
 	private worker: Worker;
