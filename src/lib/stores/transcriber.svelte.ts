@@ -1,9 +1,10 @@
 import { createWorker } from './worker';
 import Constants from '../utils/constants';
 import { surahVerses } from '$lib/surah-verses';
+import { removeDiacritics } from '$lib/utils/strings';
 
 export const WHISPER_SAMPLING_RATE = 16_000;
-const MAX_AUDIO_LENGTH = 15; // seconds
+const MAX_AUDIO_LENGTH = 10; // seconds
 export const MAX_SAMPLES = WHISPER_SAMPLING_RATE * MAX_AUDIO_LENGTH;
 
 interface ProgressItem {
@@ -143,7 +144,7 @@ export class Transcriber {
 		const SURAH_COEFF_MAX = 0.5;
 		const AYAH_COEFF = 1;
 
-		// console.log(`🔍 ${this.current_search}`);
+		console.log(`%c🔍 ${removeDiacritics(this.current_search)}`, 'color: lime');
 
 		const results_with_score = results
 			.map((result) => {
