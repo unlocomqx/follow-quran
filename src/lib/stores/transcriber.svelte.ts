@@ -174,12 +174,12 @@ export class Transcriber {
 					weight
 				};
 			})
-			.filter((v) => v.score > 0.85);
+			.filter((v) => v.score > 0.5);
 
 		const sorted_results = results_with_score.sort((a, b) => b.score - a.score);
 		const result = sorted_results[0];
 
-		if (result && this.current_surah && this.current_ayah) {
+		if (result?.score >= 1 && this.current_surah && this.current_ayah) {
 			this.surahs_counter[result.surah] = (this.surahs_counter[result.surah] ?? 0) + 1;
 			if (result.surah !== this.current_surah) {
 				const surah_count = this.surahs_counter[result.surah] ?? 0;
@@ -188,21 +188,25 @@ export class Transcriber {
 				} else {
 					return null;
 				}
+			}else{
+				this.surahs_counter = {};
 			}
 		}
 
-		const second_result = sorted_results[1];
-		if (
-			second_result?.score >= 0.9 &&
-			second_result?.surah === this.current_surah &&
-			second_result.ayah - this.current_ayah === 1
-		) {
-			console.log(`%cSecond result`, 'color: cyan');
-			return second_result;
+		const next_ayah = sorted_results.find(
+			(r) => r.surah === this.current_surah && r.ayah === this.current_ayah + 1
+		);
+		if (next_ayah && next_ayah.score >= 0.5) {
+			console.log(`%cNext ayah (${next_ayah.score})`, 'color: cyan');
+			return next_ayah;
 		}
 
 		if (result?.surah === this.current_surah && result?.ayah === this.current_ayah - 1) {
 			return null;
+		}
+
+		if(result && result.surah !== this.current_surah){
+			console.log(`%cSwitch surah (${result.surah})`, 'color: magenta');
 		}
 
 		return result;
