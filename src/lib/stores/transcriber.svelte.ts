@@ -36,6 +36,7 @@ export class Transcriber {
 	current_surah = 0;
 	current_ayah = 0;
 	surahs_counter: { [key: number]: number } = {};
+	surah_switch_threshold = 5;
 	model = $state(Constants.DEFAULT_MODEL);
 	load_callback?: () => void;
 	complete_callback?: (text: string | undefined) => void;
@@ -153,7 +154,7 @@ export class Transcriber {
 						SURAH_COEFF_MAX
 					) +
 					(AYAH_COEFF * Math.abs(result.ayah - (this.current_ayah ?? 0) + 1)) / nb_verses / 144;
-				// console.log(`${result.score} - ${weight} = ${result.score! - weight} (${result.text})`);
+				console.log(`${result.score} - ${weight} = ${result.score! - weight} (${result.text})`);
 				return {
 					...result,
 					score: result.score! - weight,
@@ -169,7 +170,7 @@ export class Transcriber {
 			this.surahs_counter[result.surah] = (this.surahs_counter[result.surah] ?? 0) + 1;
 			if (result.surah !== this.current_surah) {
 				const surah_count = this.surahs_counter[result.surah] ?? 0;
-				if (surah_count > 10) {
+				if (surah_count > this.surah_switch_threshold) {
 					this.surahs_counter[result.surah] = 0;
 				} else {
 					return null;
