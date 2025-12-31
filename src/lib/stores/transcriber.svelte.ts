@@ -135,7 +135,7 @@ export class Transcriber {
 		});
 	}
 
-	private filterResults(results: ResultData[]): ResultData | undefined {
+	private filterResults(results: ResultData[]): ResultData | null {
 		if (!this.current_surah && !this.current_ayah) return results[0];
 
 		const SURAH_COEFF = 10;
@@ -169,7 +169,11 @@ export class Transcriber {
 			this.surahs_counter[result.surah] = (this.surahs_counter[result.surah] ?? 0) + 1;
 			if (result.surah !== this.current_surah) {
 				const surah_count = this.surahs_counter[result.surah] ?? 0;
-				console.log({ surah_count });
+				if (surah_count > 10) {
+					this.surahs_counter = {};
+				} else {
+					return null;
+				}
 			}
 		}
 
@@ -184,7 +188,7 @@ export class Transcriber {
 		}
 
 		if (result?.surah === this.current_surah && result?.ayah === this.current_ayah - 1) {
-			return;
+			return null;
 		}
 
 		return result;
