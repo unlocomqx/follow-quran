@@ -8,15 +8,10 @@ import {
 	TextStreamer,
 	WhisperForConditionalGeneration
 } from '@huggingface/transformers';
+import { removeDiacritics } from '$lib/utils/strings';
 
 const MAX_NEW_TOKENS = 64;
-const VERSES_CACHE_KEY =
-	'/quran.json';
-
-interface Chapter {
-	id: number;
-	verses: Verse[];
-}
+const VERSES_CACHE_KEY = '/quran.json';
 
 interface Verse {
 	surah: number;
@@ -25,7 +20,7 @@ interface Verse {
 }
 
 async function getRemoteSha(): Promise<string | null> {
-	const res = await fetch(VERSES_CACHE_KEY,{
+	const res = await fetch(VERSES_CACHE_KEY, {
 		method: 'HEAD'
 	});
 	if (!res.ok) return null;
@@ -165,11 +160,11 @@ async function generate({ audio }: { audio: Float32Array }) {
 async function search({ text, current_surah }: { text: string; current_surah?: number }) {
 	const query = removeDiacritics(text);
 	const nb_words = query.split(/\s+/).length;
-	if(nb_words < 3){
+	if (nb_words < 3) {
 		self.postMessage({ status: 'search_complete', results: [] });
 		return;
 	}
-	if (current_surah){
+	if (current_surah) {
 		const within_surah = await searchQuran(query, current_surah);
 		const trusted_within_surah = within_surah.filter((v) => v.score > 0.85);
 		if (trusted_within_surah.length > 0) {
@@ -200,10 +195,6 @@ self.addEventListener('message', async (e: MessageEvent) => {
 	}
 });
 
-function removeDiacritics(text: string): string {
-	return text.replace(/[\u064B-\u065F\u0670]/g, '');
-}
-
 async function searchQuran(query: string, current_surah?: number, topK = 10) {
 	const [, , , verses] = await AutomaticSpeechRecognitionPipeline.getInstance();
 
@@ -219,13 +210,14 @@ async function searchQuran(query: string, current_surah?: number, topK = 10) {
 }
 
 function phraseMatchScore(query: string, text: string): number {
+	const queryWords = query.split(/\s+/);
+
 	// exact substring match gets highest score
 	if (text.includes(query)) {
 		return 1 + query.length / text.length;
 	}
 
 	// check word overlap
-	const queryWords = query.split(/\s+/);
 	const textWords = text.split(/\s+/);
 	let matchedWords = 0;
 	let consecutiveBonus = 0;
