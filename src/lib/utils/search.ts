@@ -28,7 +28,7 @@ export function searchQuran(
 export function phraseMatchScore(query: string, text: string): number {
 	const queryWords = query.split(/\s+/);
 
-	if (text.includes(query)) {
+	if (text.includes(query) && queryWords.length > 3) {
 		return 1 + query.length / text.length;
 	}
 
@@ -58,5 +58,6 @@ export function combineVerses(verses: Verse[], index: number): string {
 	const verse = verses[index];
 	const nextVerse = verses[index + 1];
 	const nextText = nextVerse?.text || '';
+	return verse.text;
 	return `${verse.text} ${nextText}`;
 }

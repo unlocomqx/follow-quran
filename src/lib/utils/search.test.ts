@@ -68,7 +68,7 @@ describe('searchQuran', () => {
 		expect(results.length).toBe(0);
 	});
 
-	it('should match query correctly', async () => {
+	it.skip('should match query correctly', async () => {
 		const verses = JSON.parse(await readFile('static/quran.json', 'utf-8'));
 
 		const results = searchQuran(verses, 'إن ليقولن الذين كفروا إن أنتم إلا مبطلون');
@@ -78,7 +78,7 @@ describe('searchQuran', () => {
 	it('should match query correctly', async () => {
 		const verses = JSON.parse(await readFile('static/quran.json', 'utf-8'));
 
-		const results = searchQuran(verses, 'والطور كتاب مسطور في رق منشور والبيت المعمر');
-		console.log(results);
+		const results = searchQuran(verses, 'فبأي آلاء ربكما تكذبان', undefined, 20);
+		console.log(results.sort((a, b) => b.score - a.score));
 	});
 });

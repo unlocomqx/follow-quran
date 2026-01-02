@@ -4,7 +4,7 @@ import { removeDiacritics } from '$lib/utils/strings';
 import { surahVerses } from '$lib/surah-verses';
 
 export const WHISPER_SAMPLING_RATE = 16_000;
-const MAX_AUDIO_LENGTH = 10; // seconds
+const MAX_AUDIO_LENGTH = 5; // seconds
 export const MAX_SAMPLES = WHISPER_SAMPLING_RATE * MAX_AUDIO_LENGTH;
 
 interface ProgressItem {
@@ -174,7 +174,7 @@ export class Transcriber {
 			})
 			.sort((a, b) => b.score - a.score);
 
-		for (const result of with_score) {
+		for (const result of with_score.filter(s => s.score > 0.1)) {
 			console.log('%c%s', 'color: #ffeb3b', `${result.surah}:${result.ayah}`, result.text, result.score);
 		}
 
@@ -191,7 +191,10 @@ export class Transcriber {
 
 		// keep current ayah
 		if (first_result.ayah === this.current_ayah - 1) {
-			console.log(`%c➡️ Keep current ayah ${first_result.surah}:${first_result.ayah}`, 'color: #ff5722');
+			console.log(
+				`%c➡️ Keep current ayah ${first_result.surah}:${this.current_ayah}`,
+				'color: #ff5722'
+			);
 			return null;
 		}
 
