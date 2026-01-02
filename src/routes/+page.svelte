@@ -4,8 +4,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { getAyahMetasForSurah } from 'quran-meta/hafs';
 	import type { AyahMeta, Surah } from 'quran-meta';
-	import { lpad } from '$lib/utils/strings';
-	import { removeDiacritics } from '$lib/utils/strings';
+	import { lpad, removeDiacritics } from '$lib/utils/strings';
 
 	let listening = $state<boolean>(false);
 	let stream = $state<MediaStream | null>(null);
@@ -113,7 +112,7 @@
 </script>
 
 <svelte:head>
-	<script src="/quran-madina-html.min.js" type="text/javascript"></script>
+	<script data-font-size="16" src="/quran-madina-html.js" type="text/javascript"></script>
 </svelte:head>
 
 <div class="card bg-base-100 w-xl m-auto my-10 shadow-sm">
@@ -155,13 +154,10 @@
 			== {transcriber.result?.text ?? ''}==
 		</p>
 
-		{#if page}
-			<div class="text-black">
-				<quran-madina-html {page}
-													 data-font="uthman"
-													 data-font-size="20"
-				></quran-madina-html>
+		{#key page}
+			<div class="text-black" class:hidden={!page}>
+				<quran-madina-html {page}></quran-madina-html>
 			</div>
-		{/if}
+		{/key}
 	</div>
 </div>
