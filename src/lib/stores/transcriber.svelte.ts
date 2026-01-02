@@ -201,6 +201,15 @@ export class Transcriber {
 			return next_ayah;
 		}
 
+		const current_ayah = sorted_results.find(
+			(r) => r.surah === this.current_surah && r.ayah === this.current_ayah
+		);
+
+		if (current_ayah && current_ayah.score >= 0.5) {
+			console.log(`%cCurrent ayah (${current_ayah.score})`, 'color: yellow');
+			return current_ayah;
+		}
+
 		if (result?.surah === this.current_surah && result?.ayah === this.current_ayah - 1) {
 			return null;
 		}
