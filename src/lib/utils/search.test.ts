@@ -74,4 +74,11 @@ describe('searchQuran', () => {
 		const results = searchQuran(verses, 'إن ليقولن الذين كفروا إن أنتم إلا مبطلون');
 		console.log(results);
 	});
+
+	it('should match query correctly', async () => {
+		const verses = JSON.parse(await readFile('static/quran.json', 'utf-8'));
+
+		const results = searchQuran(verses, 'والطور كتاب مسطور في رق منشور والبيت المعمر');
+		console.log(results);
+	});
 });

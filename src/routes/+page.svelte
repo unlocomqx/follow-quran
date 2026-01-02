@@ -82,7 +82,6 @@
 			if (text) transcriber.search(text);
 		});
 		transcriber.onSearchComplete(() => {
-			console.log(transcriber.result?.surah);
 			// console.log('%c%s %s %s', 'color: lime', transcriber.result?.surah, transcriber.result?.ayah, $state.snapshot(transcriber.result?.text));
 			if (transcriber.result?.surah) {
 				surahMeta = getAyahMetasForSurah((transcriber.result?.surah ?? 0) as Surah);

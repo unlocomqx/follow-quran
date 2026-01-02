@@ -1,7 +1,7 @@
 import { createWorker } from './worker';
 import Constants from '../utils/constants';
-import { surahVerses } from '$lib/surah-verses';
 import { removeDiacritics } from '$lib/utils/strings';
+import { surahVerses } from '$lib/surah-verses';
 
 export const WHISPER_SAMPLING_RATE = 16_000;
 const MAX_AUDIO_LENGTH = 10; // seconds
@@ -152,73 +152,64 @@ export class Transcriber {
 	private filterResults(results: ResultData[]): ResultData | null {
 		if (!this.current_surah && !this.current_ayah) return results[0];
 
-		const SURAH_COEFF = 10;
-		const SURAH_COEFF_MAX = 0.5;
-		const AYAH_COEFF = 1;
-
 		console.log(`%c🔍 ${removeDiacritics(this.current_search)}`, 'color: lime');
 
-		const results_with_score = results
+		const with_score = results
 			.map((result) => {
-				const nb_verses = surahVerses[result.surah] || 0;
-				const weight =
-					Math.min(
-						(SURAH_COEFF * Math.abs(result.surah - (this.current_surah ?? 0))) / 144,
-						SURAH_COEFF_MAX
-					) +
-					(AYAH_COEFF * Math.abs(result.ayah - (this.current_ayah ?? 0) + 1)) / nb_verses / 144;
-				console.log(`${result.score} - ${weight} = ${result.score! - weight} (${result.text})`);
+				const nb_verses = surahVerses[this.current_surah] || 1;
+
+				const current_ayah = this.current_surah ?? 0;
+				let surah_distance = Math.abs(result.surah - current_ayah);
+				const distance_to_end = nb_verses - current_ayah;
+				if (distance_to_end < 3) surah_distance -= 1;
+				const surah_weight = surah_distance > 0 ? 0.3 : 0;
+
+				const same_surah = result.surah === current_ayah;
+				const ayah_distance = result.ayah - (current_ayah + 1); // gives next ayah less weight
+				const ayah_weight = ayah_distance > 0 ? ayah_distance / (nb_verses - current_ayah) : 1;
 				return {
 					...result,
-					score: result.score! - weight,
-					weight
+					score: result.score! - surah_weight - (same_surah ? ayah_weight : 0)
 				};
 			})
-			.filter((v) => v.score > 0.5);
+			.sort((a, b) => b.score - a.score);
 
-		const sorted_results = results_with_score.sort((a, b) => b.score - a.score);
-		const result = sorted_results[0];
-
-		if (result?.score >= 1 && this.current_surah && this.current_ayah) {
-			this.surahs_counter[result.surah] = (this.surahs_counter[result.surah] ?? 0) + 1;
-			if (result.surah !== this.current_surah) {
-				const surah_count = this.surahs_counter[result.surah] ?? 0;
-				if (surah_count > this.surah_switch_threshold) {
-					this.surahs_counter[result.surah] = 0;
-				} else {
-					return null;
-				}
-			}else{
-				this.surahs_counter = {};
-			}
+		for (const result of with_score) {
+			console.log('%c%s', 'color: #ffeb3b', `${result.surah}:${result.ayah}`, result.text, result.score);
 		}
 
-		const next_ayah = sorted_results.find(
-			(r) => r.surah === this.current_surah && r.ayah === this.current_ayah + 1
-		);
-		if (next_ayah && next_ayah.score >= 0.5) {
-			console.log(`%cNext ayah (${next_ayah.score})`, 'color: cyan');
+		const next_ayah = with_score.find((r) => r.ayah === this.current_ayah + 1);
+		if (next_ayah) {
+			console.log(`%c➡️ Next ayah ${next_ayah.surah}:${next_ayah.ayah}`, 'color: red');
 			return next_ayah;
 		}
 
-		const current_ayah = sorted_results.find(
-			(r) => r.surah === this.current_surah && r.ayah === this.current_ayah
-		);
+		const high_scores = with_score.filter((r) => r.score > 0.85);
 
-		if (current_ayah && current_ayah.score >= 0.5) {
-			console.log(`%cCurrent ayah (${current_ayah.score})`, 'color: yellow');
-			return current_ayah;
-		}
+		const first_result = high_scores[0];
+		if (!first_result) return null;
 
-		if (result?.surah === this.current_surah && result?.ayah === this.current_ayah - 1) {
+		// keep current ayah
+		if (first_result.ayah === this.current_ayah - 1) {
+			console.log(`%c➡️ Keep current ayah ${first_result.surah}:${first_result.ayah}`, 'color: #ff5722');
 			return null;
 		}
 
-		if(result && result.surah !== this.current_surah){
-			console.log(`%cSwitch surah (${result.surah})`, 'color: magenta');
+		const same_surah = high_scores.find((r) => r.surah === first_result?.surah);
+		if (same_surah) {
+			console.log(`%c➡️ Same surah ${same_surah.surah}:${same_surah.ayah}`, 'color: #ff5722');
+			return same_surah;
 		}
 
-		return result;
+		console.log(`%c✅ ${first_result?.text}`, 'color: cyan');
+		if (first_result?.surah !== this.current_surah) {
+			console.log(
+				`%c🔍 Different surah: ${first_result?.surah} / ${this.current_surah}`,
+				'color: magenta'
+			);
+		}
+
+		return first_result;
 	}
 }
 
