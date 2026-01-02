@@ -103,7 +103,7 @@
 		}
 		style.innerText = `
 			.quran-madina-html-${lpad(transcriber.result?.surah?.toString() ?? '', 3, '0')}-${lpad(transcriber.result?.ayah?.toString() ?? '', 3, '0')} {
-				color: orange;
+				color: #1e88e5;
 			}
 		`;
 		return () => {

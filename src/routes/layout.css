@@ -1,4 +1,10 @@
 @import 'tailwindcss';
+
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 @plugin "daisyui";
+
+quran-madina-html {
+    --qmh-header: #689F38 !important;
+    --qmh-background: #F5F5F5 !important;
+}
