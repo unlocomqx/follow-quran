@@ -1,7 +1,7 @@
 (
 	function(){
 		var name = "quran-madina-html";
-		var cdn = (/localhostx/.test(document.location.hostname))? "../":`https://www.unpkg.com/${name}/`;
+		var cdn = '/';
 		function loadJSON(path, success, error){
 			var xhr = new XMLHttpRequest();
 			xhr.onreadystatechange = function()
@@ -143,7 +143,7 @@
 		var doc_font    = (this_script.getAttribute('data-font') || "me_quran").replaceAll(" ","_");
 		var doc_font_sz = this_script.getAttribute('data-font-size') || 16;
 		print(`${doc_name} with font: ${doc_font} size: ${doc_font_sz}`);
-		const name_css = cdn+"dist/"+name+".min.css?v=1.1";
+		const name_css = '/quran-madina-html.min.css';
 		if (!document.getElementById(name))
 		{
 			var head  = document.getElementsByTagName('head')[0];
