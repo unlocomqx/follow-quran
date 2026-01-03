@@ -144,17 +144,8 @@
 				</div>
 			{/each}
 		</div>
-
-		<p>
-			== {removeDiacritics(transcriber.output?.text ?? '')} ==
-		</p>
-
-		<p>
-			== {transcriber.result?.text ?? ''}==
-		</p>
-
 		{#key page}
-			<div class="text-black" class:hidden={!page}>
+			<div class="flex justify-center text-black" class:hidden={!page}>
 				<quran-madina-html {page}></quran-madina-html>
 			</div>
 		{/key}
