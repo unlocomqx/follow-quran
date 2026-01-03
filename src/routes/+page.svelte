@@ -75,7 +75,7 @@
 	}
 
 	let surahMeta = $state<AyahMeta[] | null>(null);
-	let page = $state<number | null>(null);
+	let page = $state<number | null>(1);
 	onMount(() => {
 		transcriber.onComplete((text) => {
 			if (text) transcriber.search(text);
@@ -124,21 +124,26 @@
 						<Icon icon="mdi:robot" />
 						تحميل نماذج الذكاء الاصطناعي
 					</button>
-					<span dir="ltr" class="text-xs font-mono text-center">Download size: {prettyBytes(200 * 1024 * 1024)}</span>
+					<span class="text-accent text-xs font-mono text-center">
+						الحجم الجملي
+						<span dir="ltr">{prettyBytes(200 * 1024 * 1024)}</span>
+					</span>
 				</div>
-				<div class="flex flex-col gap-4 mt-10">
-					{#each transcriber.progressItems as item (item.file)}
-						<div class="flex flex-col" transition:fade={{duration: 500}}>
-							<div class="text-xs font-mono text-center">
-								<div>{item.file}</div>
-								{#if item.loaded && item.total}
-									<div>({prettyBytes(item.loaded)} / {prettyBytes(item.total)})</div>
-								{/if}
+				{#if transcriber.progressItems.length}
+					<div class="flex flex-col gap-4 mt-10">
+						{#each transcriber.progressItems as item (item.file)}
+							<div class="flex flex-col" transition:fade={{duration: 500}}>
+								<div class="text-xs font-mono text-center">
+									<div>{item.file}</div>
+									{#if item.loaded && item.total}
+										<div>({prettyBytes(item.loaded)} / {prettyBytes(item.total)})</div>
+									{/if}
+								</div>
+								<progress class="progress progress-accent" value={item.progress} max="100"></progress>
 							</div>
-							<progress class="progress progress-accent" value={item.progress} max="100"></progress>
-						</div>
-					{/each}
-				</div>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		</div>
 	{:else}
