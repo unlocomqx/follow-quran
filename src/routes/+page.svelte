@@ -124,6 +124,7 @@
 						<Icon icon="mdi:robot" />
 						تحميل نماذج الذكاء الاصطناعي
 					</button>
+					<span dir="ltr" class="text-xs font-mono text-center">Download size: {prettyBytes(200 * 1024 * 1024)}</span>
 				</div>
 				<div class="flex flex-col gap-4 mt-10">
 					{#each transcriber.progressItems as item (item.file)}
