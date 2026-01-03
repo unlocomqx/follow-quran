@@ -6,6 +6,7 @@
 	import type { AyahMeta, Surah } from 'quran-meta';
 	import { lpad } from '$lib/utils/strings';
 	import { fade } from 'svelte/transition';
+	import prettyBytes from 'pretty-bytes';
 
 	let listening = $state<boolean>(false);
 	let stream = $state<MediaStream | null>(null);
@@ -126,10 +127,12 @@
 				</div>
 				<div class="flex flex-col gap-4 mt-10">
 					{#each transcriber.progressItems as item (item.file)}
-						{$inspect(item.total)}
 						<div class="flex flex-col" transition:fade={{duration: 500}}>
-							<div class="font-mono">
-								{item.file} ({item.progress?.toFixed(2) ?? 0}%) - {item.status}
+							<div class="text-xs font-mono text-center">
+								<div>{item.file}</div>
+								{#if item.loaded && item.total}
+									<div>({prettyBytes(item.loaded)} / {prettyBytes(item.total)})</div>
+								{/if}
 							</div>
 							<progress class="progress progress-accent" value={item.progress} max="100"></progress>
 						</div>

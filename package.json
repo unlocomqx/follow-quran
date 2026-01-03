@@ -57,6 +57,7 @@
 		"@huggingface/transformers": "^3.8.1",
 		"@iconify/svelte": "^5.1.0",
 		"postgres": "^3.4.7",
+		"pretty-bytes": "^7.1.0",
 		"quran-meta": "^6.0.12"
 	}
 }
