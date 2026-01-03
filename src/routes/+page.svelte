@@ -119,13 +119,14 @@
 				<div dir="rtl" class="flex flex-col gap-4 justify-center">
 					<h2 class="card-title mx-auto">إتّبع القُرآن</h2>
 					<p class="text-center">تطبيق يتابع تلاوات القرآن تلقائياً.</p>
-					<button class="btn btn-primary" onclick={() => transcriber.load()}>
+					<button class="btn btn-primary" disabled={transcriber.state === 'loading'} onclick={() => transcriber.load()}>
 						<Icon icon="mdi:robot" />
 						تحميل نماذج الذكاء الاصطناعي
 					</button>
 				</div>
 				<div class="flex flex-col gap-4 mt-10">
 					{#each transcriber.progressItems as item (item.file)}
+						{JSON.stringify(item)}
 						<div class="flex flex-col" transition:fade={{duration: 500}}>
 							<div class="font-mono">
 								{item.file} ({item.progress?.toFixed(2) ?? 0}%) - {item.status}
