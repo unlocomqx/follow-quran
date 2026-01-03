@@ -4,7 +4,8 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { getAyahMetasForSurah } from 'quran-meta/hafs';
 	import type { AyahMeta, Surah } from 'quran-meta';
-	import { lpad, removeDiacritics } from '$lib/utils/strings';
+	import { lpad } from '$lib/utils/strings';
+	import { fade } from 'svelte/transition';
 
 	let listening = $state<boolean>(false);
 	let stream = $state<MediaStream | null>(null);
@@ -75,9 +76,6 @@
 	let surahMeta = $state<AyahMeta[] | null>(null);
 	let page = $state<number | null>(null);
 	onMount(() => {
-		transcriber.load(() => {
-			startListening();
-		});
 		transcriber.onComplete((text) => {
 			if (text) transcriber.search(text);
 		});
@@ -114,40 +112,51 @@
 	<script data-font-size="16" src="/quran-madina-html.js" type="text/javascript"></script>
 </svelte:head>
 
-<div class="card bg-base-100 w-xl m-auto my-10 shadow-sm">
-	<div class="card-body">
-		<h2 class="card-title">Follow The Quran</h2>
-		<p>A web app to follow the Quran recitations automatically.</p>
-		<div>
-			<button class="btn btn-primary" onclick={() => transcriber.load()}>
-				<Icon icon="mdi:robot" />
-				Load AI models
-			</button>
-		</div>
-		<div class="card-actions justify-end">
-			<button class="btn btn-success" disabled={listening || transcriber.state !== 'ready'} onclick={startListening}>
-				<Icon icon="mdi:microphone" />
-				Start listening
-			</button>
-			<button class="btn btn-error" disabled={!listening} onclick={stopListening}>
-				<Icon icon="mdi:stop" />
-				Stop
-			</button>
-		</div>
-		<div class="flex flex-col gap-4 mt-10">
-			{#each transcriber.progressItems as item (item.file)}
-				<div class="flex flex-col">
-					<div class="font-mono">
-						{item.file} ({item.progress?.toFixed(2) ?? 0}%) - {item.status}
-					</div>
-					<progress class="progress progress-accent" value={item.progress} max="100"></progress>
+<div class="relative max-w-sm mx-auto h-screen flex items-center justify-center">
+	{#if transcriber.state !== 'ready'}
+		<div class="card bg-base-100 m-auto my-10 shadow-sm">
+			<div class="card-body">
+				<div dir="rtl" class="flex flex-col gap-4 justify-center">
+					<h2 class="card-title mx-auto">إتّبع القُرآن</h2>
+					<p class="text-center">تطبيق يتابع تلاوات القرآن تلقائياً.</p>
+					<button class="btn btn-primary" onclick={() => transcriber.load()}>
+						<Icon icon="mdi:robot" />
+						تحميل نماذج الذكاء الاصطناعي
+					</button>
 				</div>
-			{/each}
+				<div class="flex flex-col gap-4 mt-10">
+					{#each transcriber.progressItems as item (item.file)}
+						<div class="flex flex-col" transition:fade={{duration: 500}}>
+							<div class="font-mono">
+								{item.file} ({item.progress?.toFixed(2) ?? 0}%) - {item.status}
+							</div>
+							<progress class="progress progress-accent" value={item.progress} max="100"></progress>
+						</div>
+					{/each}
+				</div>
+			</div>
+		</div>
+	{:else}
+		<div class="absolute bottom-4 right-4">
+			{#if !listening}
+				<button class="btn btn-success" disabled={transcriber.state !== 'ready'} onclick={startListening}>
+					<Icon icon="mdi:microphone" />
+				</button>
+			{:else}
+				<button class="btn btn-warning" onclick={stopListening}>
+					<Icon icon="mdi:pause" />
+				</button>
+			{/if}
 		</div>
 		{#key page}
 			<div class="flex justify-center text-black" class:hidden={!page}>
 				<quran-madina-html {page}></quran-madina-html>
 			</div>
+			{#if !page}
+				<p class="text-center">
+					<span class="loading loading-dots loading-xs"></span> الصفحة قيد التنزيل
+				</p>
+			{/if}
 		{/key}
-	</div>
+	{/if}
 </div>
