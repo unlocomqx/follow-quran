@@ -2,7 +2,7 @@
 	import Icon from '@iconify/svelte';
 	import { MAX_SAMPLES, transcriber, WHISPER_SAMPLING_RATE } from '$lib/stores/transcriber.svelte';
 	import { onDestroy, onMount } from 'svelte';
-	import { getAyahMetasForSurah,getList } from 'quran-meta/hafs';
+	import { getAyahMeta, getAyahMetasForSurah, getList } from 'quran-meta/hafs';
 	import type { AyahMeta, Surah } from 'quran-meta';
 	import { lpad } from '$lib/utils/strings';
 	import { fade } from 'svelte/transition';
@@ -109,13 +109,14 @@
 	});
 
 	const surahs = getList('surah');
+	let current_start_ayah = $state(1);
 </script>
 
 <svelte:head>
 	<script data-font-size="16" src="/quran-madina-html.js" type="text/javascript"></script>
 </svelte:head>
 
-<div class="relative max-w-sm mx-auto h-screen flex items-center justify-center">
+<div class="relative max-w-sm mx-auto h-screen flex flex-col gap-2 items-center justify-center">
 	{#if transcriber.state !== 'ready'}
 		<div class="card bg-base-100 m-auto my-10 shadow-sm">
 			<div class="card-body">
@@ -160,6 +161,17 @@
 				</button>
 			{/if}
 		</div>
+		<select bind:value={current_start_ayah} dir="rtl" class="text-black w-xs"
+						onchange={() => {
+							const ayah = getAyahMeta(current_start_ayah)
+							if(ayah?.page) page = ayah.page;
+						}}>
+			{#each surahs as [startAyahId, ayahCount, surahOrder, rukuCount, name, isMeccan], index (startAyahId)}
+				{#if name}
+					<option value={startAyahId}>{index} - {name}</option>
+				{/if}
+			{/each}
+		</select>
 		{#key page}
 			<div class="flex justify-center text-black" class:hidden={!page}>
 				<quran-madina-html {page}></quran-madina-html>
