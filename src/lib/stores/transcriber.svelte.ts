@@ -66,6 +66,10 @@ export class Transcriber {
 		this.worker.postMessage({ type: 'load' });
 	}
 
+	checkCached() {
+		this.worker.postMessage({ type: 'check_cached' });
+	}
+
 	private onMessage(event: MessageEvent) {
 		const message = event.data;
 

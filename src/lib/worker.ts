@@ -43,6 +43,15 @@ async function loadVersesWithCache(): Promise<Verse[]> {
 	return JSON.parse(text);
 }
 
+const MODEL_ID = 'eventhorizon0/tarteel-ai-onnx-whisper-base-ar-quran';
+
+async function isModelCached(): Promise<boolean> {
+	const cache = await caches.open('transformers-cache');
+	const keys = await cache.keys();
+	const modelFiles = keys.filter((k) => k.url.includes(MODEL_ID));
+	return modelFiles.length > 5;
+}
+
 class AutomaticSpeechRecognitionPipeline {
 	static model_id: string | null = null;
 	static tokenizer: Promise<PreTrainedTokenizer> | null = null;
@@ -51,7 +60,7 @@ class AutomaticSpeechRecognitionPipeline {
 	static verses_promise: Promise<Verse[]> | null = null;
 
 	static async getInstance(progress_callback?: ProgressCallback) {
-		this.model_id = 'eventhorizon0/tarteel-ai-onnx-whisper-base-ar-quran';
+		this.model_id = MODEL_ID;
 
 		this.tokenizer ??= AutoTokenizer.from_pretrained(this.model_id, {
 			progress_callback
@@ -177,12 +186,24 @@ async function search({ text, current_surah }: { text: string; current_surah?: n
 	self.postMessage({ status: 'search_complete', results: trusted_results });
 }
 
+async function checkCached() {
+	const cached = await isModelCached();
+	if (cached) {
+		await load();
+	} else {
+		self.postMessage({ status: 'not_cached' });
+	}
+}
+
 self.addEventListener('message', async (e: MessageEvent) => {
 	const { type, data } = e.data;
 
 	switch (type) {
 		case 'load':
 			await load();
+			break;
+		case 'check_cached':
+			await checkCached();
 			break;
 		case 'generate':
 			await generate(data);

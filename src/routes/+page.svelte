@@ -77,11 +77,11 @@
 	let surahMeta = $state<AyahMeta[] | null>(null);
 	let page = $state<number | null>(1);
 	onMount(() => {
+		transcriber.checkCached();
 		transcriber.onComplete((text) => {
 			if (text) transcriber.search(text);
 		});
 		transcriber.onSearchComplete(() => {
-			// console.log('%c%s %s %s', 'color: lime', transcriber.result?.surah, transcriber.result?.ayah, $state.snapshot(transcriber.result?.text));
 			if (transcriber.result?.surah) {
 				surahMeta = getAyahMetasForSurah((transcriber.result?.surah ?? 0) as Surah);
 				if (surahMeta) page = surahMeta.find((m) => m.ayah === transcriber.result?.ayah)?.page ?? null;
