@@ -155,7 +155,7 @@
 			link.media = 'all';
 			head.appendChild(link);
 		}
-		loadJSON(`${cdn}assets/db/${doc_name}-${doc_font}-${doc_font_sz}px.json`,
+		loadJSON(`/Madina05-me_quran-16px.json`,
 			function(data) {
 				madina_data = data;
 				const myFont = new FontFace(madina_data.font_family, 'url('+encodeURI(madina_data.font_url)+')');

@@ -2,7 +2,7 @@
 	import Icon from '@iconify/svelte';
 	import { MAX_SAMPLES, transcriber, WHISPER_SAMPLING_RATE } from '$lib/stores/transcriber.svelte';
 	import { onDestroy, onMount } from 'svelte';
-	import { getAyahMetasForSurah } from 'quran-meta/hafs';
+	import { getAyahMetasForSurah,getList } from 'quran-meta/hafs';
 	import type { AyahMeta, Surah } from 'quran-meta';
 	import { lpad } from '$lib/utils/strings';
 	import { fade } from 'svelte/transition';
@@ -107,6 +107,8 @@
 			if (style) style.innerText = '';
 		};
 	});
+
+	const surahs = getList('surah');
 </script>
 
 <svelte:head>
