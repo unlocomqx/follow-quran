@@ -79,11 +79,7 @@ export class Transcriber {
 
 			case 'progress':
 				this.state = 'loading';
-				this.progressItems.map((item) => {
-					if (item.file === message.file) {
-						item.progress = message.progress;
-					}
-				});
+				this.progressItems = this.progressItems.map((item) => item.file === message.file ? {...item, ...message} : item);
 				break;
 
 			case 'ready':

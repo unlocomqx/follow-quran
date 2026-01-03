@@ -126,7 +126,7 @@
 				</div>
 				<div class="flex flex-col gap-4 mt-10">
 					{#each transcriber.progressItems as item (item.file)}
-						{JSON.stringify(item)}
+						{$inspect(item.total)}
 						<div class="flex flex-col" transition:fade={{duration: 500}}>
 							<div class="font-mono">
 								{item.file} ({item.progress?.toFixed(2) ?? 0}%) - {item.status}
