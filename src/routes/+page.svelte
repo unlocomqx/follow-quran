@@ -2,9 +2,9 @@
 	import Icon from '@iconify/svelte';
 	import { MAX_SAMPLES, transcriber, WHISPER_SAMPLING_RATE } from '$lib/stores/transcriber.svelte';
 	import { onDestroy, onMount } from 'svelte';
-	import { getAyahMeta, getAyahMetasForSurah, getList } from 'quran-meta/hafs';
+	import { getAyahMeta, getAyahMetasForSurah, getList, type SurahInfo } from 'quran-meta/hafs';
 	import type { AyahMeta, Surah } from 'quran-meta';
-	import { lpad } from '$lib/utils/strings';
+	import { lpad, removeDiacritics } from '$lib/utils/strings';
 	import { fade } from 'svelte/transition';
 	import prettyBytes from 'pretty-bytes';
 
@@ -21,14 +21,18 @@
 		if (chunks.length > 0) {
 			const blob = new Blob(chunks, { type: recorder.mimeType });
 			const arrayBuffer = await blob.arrayBuffer();
-			const decoded = await audioContext!.decodeAudioData(arrayBuffer);
-			let audio = decoded.getChannelData(0);
+			try {
+				const decoded = await audioContext!.decodeAudioData(arrayBuffer);
+				let audio = decoded.getChannelData(0);
 
-			if (audio.length > MAX_SAMPLES) {
-				audio = audio.slice(-MAX_SAMPLES);
+				if (audio.length > MAX_SAMPLES) {
+					audio = audio.slice(-MAX_SAMPLES);
+				}
+
+				transcriber.start(audio);
+			} catch {
+				// chunks cleared mid-processing
 			}
-
-			transcriber.start(audio);
 			recorder?.requestData();
 		} else {
 			recorder?.requestData();
@@ -78,6 +82,9 @@
 	let page = $state<number | null>(1);
 	onMount(() => {
 		transcriber.checkCached();
+		transcriber.load(() => {
+			startListening();
+		});
 		transcriber.onComplete((text) => {
 			if (text) transcriber.search(text);
 		});
@@ -108,8 +115,8 @@
 		};
 	});
 
-	const surahs = getList('surah');
-	let current_start_ayah = $state(1);
+	const surahs = getList('surah') as unknown as SurahInfo[];
+	let current_surah = $derived(transcriber.current_surah || 1);
 </script>
 
 <svelte:head>
@@ -161,17 +168,20 @@
 				</button>
 			{/if}
 		</div>
-		<select bind:value={current_start_ayah} dir="rtl" class="text-black w-xs"
-						onchange={() => {
-							const ayah = getAyahMeta(current_start_ayah)
+		{#if !listening}
+			<select bind:value={current_surah} dir="rtl" class="text-black w-xs"
+							onchange={() => {
+								const startAyahId = surahs[current_surah][0]
+							const ayah = getAyahMeta(startAyahId)
 							if(ayah?.page) page = ayah.page;
 						}}>
-			{#each surahs as [startAyahId, ayahCount, surahOrder, rukuCount, name, isMeccan], index (startAyahId)}
-				{#if name}
-					<option value={startAyahId}>{index} - {name}</option>
-				{/if}
-			{/each}
-		</select>
+				{#each surahs as [startAyahId, , , , name], index (startAyahId)}
+					{#if name}
+						<option value={index}>{index} - {name}</option>
+					{/if}
+				{/each}
+			</select>
+		{/if}
 		{#key page}
 			<div class="flex justify-center text-black" class:hidden={!page}>
 				<quran-madina-html {page}></quran-madina-html>
