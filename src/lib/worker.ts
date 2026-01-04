@@ -129,7 +129,7 @@ async function generate({ audio }: { audio: Float32Array }) {
 			tps = (numTokens / (performance.now() - startTime)) * 1000;
 		}
 		self.postMessage({
-			status: 'update',
+			status: 'search_update',
 			output,
 			tps,
 			numTokens
