@@ -43,15 +43,13 @@ export class Transcriber {
 	current_surah = 0;
 	/** current ayah being read */
 	current_ayah = 0;
-	/** tracks how many times each surah appears in results for switch detection */
-	surahs_counter: { [key: number]: number } = {};
-	/** number of consecutive hits needed to switch to a new surah */
-	surah_switch_threshold = 5;
 	model = $state(Constants.DEFAULT_MODEL);
 	/** callback when model finishes loading */
 	load_callback?: () => void;
 	/** callback when transcription completes */
 	complete_callback?: (text: string | undefined) => void;
+	/** callback when search updates */
+	search_update_callback?: (result: string | null) => void;
 	/** callback when search completes */
 	search_complete_callback?: () => void;
 
@@ -83,7 +81,9 @@ export class Transcriber {
 
 			case 'progress':
 				this.state = 'loading';
-				this.progressItems = this.progressItems.map((item) => item.file === message.file ? {...item, ...message} : item);
+				this.progressItems = this.progressItems.map((item) =>
+					item.file === message.file ? { ...item, ...message } : item
+				);
 				break;
 
 			case 'ready':
@@ -105,6 +105,10 @@ export class Transcriber {
 				this.complete_callback?.(this.output?.text);
 				break;
 
+			case 'search_update':
+				this.search_update_callback?.(message.output);
+				break;
+
 			case 'search_complete': {
 				const result = this.filterResults(message.results as ResultData[]);
 				if (result) {
@@ -120,6 +124,10 @@ export class Transcriber {
 
 	onComplete(cb: (text: string | undefined) => void) {
 		this.complete_callback = cb;
+	}
+
+	onSearchUpdate(cb: (result: string | null) => void) {
+		this.search_update_callback = cb;
 	}
 
 	onSearchComplete(cb: () => void) {
@@ -184,7 +192,7 @@ export class Transcriber {
 			return next_ayah;
 		}
 
-		const high_scores = with_score.filter((r) => r.score > 0.85);
+		const high_scores = with_score.filter((r) => r.score > 0.75);
 
 		const first_result = high_scores[0];
 		if (!first_result) return null;
@@ -198,21 +206,22 @@ export class Transcriber {
 			return null;
 		}
 
-		const same_surah = high_scores.find((r) => r.surah === first_result?.surah);
+		const same_surah = high_scores.find((r) => r.surah === this.current_surah);
 		if (same_surah) {
 			console.log(`%c➡️ Same surah ${same_surah.surah}:${same_surah.ayah}`, 'color: #ff5722');
 			return same_surah;
 		}
 
 		console.log(`%c✅ ${first_result?.text}`, 'color: cyan');
-		if (first_result?.surah !== this.current_surah) {
+		if (first_result?.surah !== this.current_surah && first_result?.score >= 1.2) {
 			console.log(
 				`%c🔍 Different surah: ${first_result?.surah} / ${this.current_surah}`,
 				'color: magenta'
 			);
+			return first_result;
 		}
 
-		return first_result;
+		return null;
 	}
 }
 
