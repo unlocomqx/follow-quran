@@ -78,7 +78,12 @@ describe('searchQuran', () => {
 	it('should match query correctly', async () => {
 		const verses = JSON.parse(await readFile('static/quran.json', 'utf-8'));
 
-		const results = searchQuran(verses, 'فبأي آلاء ربكما تكذبان', undefined, 20);
+		const results = searchQuran(
+			verses,
+			'وإذا قيل لهم لا تفسدوا فالأرض قالوا إنما محنون',
+			undefined,
+			20
+		);
 		console.log(results.sort((a, b) => b.score - a.score));
 	});
 });
